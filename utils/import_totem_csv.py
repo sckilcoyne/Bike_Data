@@ -75,7 +75,7 @@ def create_records(history):
     recordsDict = {'dailyRecord': dailyRecord,
                    'monthlyRecords': monthlyRecords}
 
-    return recordsDict
+    return dailyTotals, recordsDict
 
 # %% Pickle
 
@@ -85,7 +85,7 @@ def pickle_dict(pklDict, file):
     f = open('..\data\\' + file + '.pkl', 'wb')
 
     # write the python object (dict) to pickle file
-    pickle.dump(dict, f, protocol=3)
+    pickle.dump(pklDict, f, protocol=3)
 
     # close file
     f.close()
@@ -95,9 +95,17 @@ def pickle_dict(pklDict, file):
 
 if __name__ == '__main__':
 
+    if input('Download full dataset? (y)  ') == 'y':
+        print('Downloading dataset...')
+        download_dataset(dataset)
+        print('Download complete')
+
+    print('Loading dataset...')
     history = load_dataset(dataset)
 
-    records = create_records(history)
+    dailyTotals, records = create_records(history)
 
-    history.to_pickle('../data/braodway_count_data', protocol=3)
+    dailyTotals.to_pickle('../data/braodway_daily_totals.pkl', protocol=3)
     pickle_dict(records, 'broadway_records')
+
+    print('History and records saved')
