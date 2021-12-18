@@ -9,11 +9,17 @@ https://data.cambridgema.gov/Transportation-Planning/Eco-Totem-Broadway-Bicycle-
 
 # %% Initialize
 import pandas as pd
-import pickle
+# import pickle
+import utils.utilFuncs as utils
 # import csv
 import requests
+import logging
+
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger()
 
 dataset = '..\data\Eco-Totem_Broadway_Bicycle_Count.csv'
+
 
 # %% Load Full Dataset
 
@@ -77,35 +83,29 @@ def create_records(history):
 
     return dailyTotals, recordsDict
 
-# %% Pickle
+
+# %% Main
 
 
-def pickle_dict(pklDict, file):
-    # create a binary pickle file
-    f = open('..\data\\' + file + '.pkl', 'wb')
-
-    # write the python object (dict) to pickle file
-    pickle.dump(pklDict, f, protocol=3)
-
-    # close file
-    f.close()
-
-
-# %% Run Script
-
-if __name__ == '__main__':
-
+def main():
     if input('Download full dataset? (y)  ') == 'y':
-        print('Downloading dataset...')
+        logger.info('Downloading dataset...')
         download_dataset(dataset)
-        print('Download complete')
+        logger.info('Download complete')
 
-    print('Loading dataset...')
+    logger.info('Loading dataset...')
     history = load_dataset(dataset)
 
     dailyTotals, records = create_records(history)
 
     dailyTotals.to_pickle('../data/braodway_daily_totals.pkl', protocol=3)
-    pickle_dict(records, 'broadway_records')
+    utils.pickle_dict(records, 'broadway_records')
 
-    print('History and records saved')
+    logger.info('History and records saved')
+
+# %% Run Script
+
+
+if __name__ == '__main__':
+
+    main()
