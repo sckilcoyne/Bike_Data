@@ -1,3 +1,0 @@
-https://data.cambridgema.gov/Transportation-Planning/Eco-Totem-Broadway-Bicycle-Count/q8v9-mcfg
-https://www.bluebikes.com/system-data
-https://gbfs.bluebikes.com/gbfs/gbfs.json
