@@ -4,7 +4,7 @@ save_data_on_exit = True
 save_history = True
 save_non_project_files = False
 project_type = 'empty-project-type'
-recent_files = ['tweet_bot.py']
+recent_files = ['tweet_bot.py', 'dataSources\\cambridge_totem.py', 'dataSources\\import_totem_csv.py']
 
 [main]
 version = 0.2.0

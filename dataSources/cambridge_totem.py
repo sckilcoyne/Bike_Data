@@ -16,8 +16,8 @@ import pickle
 import time
 import calendar
 import os
-import logging
 import sys
+import logging
 
 logFormat = "%(levelname)s %(asctime)s - %(message)s"
 logging.basicConfig(stream=sys.stdout,
@@ -35,11 +35,13 @@ yesterday = date.today() - timedelta(days=1)
 def load_pickled_data():
     path = os.getcwd()
     currentFolder = os.path.basename(path)
-    if currentFolder == 'utils':
+    logging.debug('cwd: ' + currentFolder)
+
+    if currentFolder == 'dataSources':
         parent = os.path.dirname(path)
         dataFolder = parent + '\data'
     else:
-        dataFolder = currentFolder + '\data'
+        dataFolder = path + '\data'
 
     broadwayDailyTotals = pd.read_pickle(
         dataFolder + r'\braodway_daily_totals.pkl')
@@ -133,6 +135,11 @@ def query_dataset(broadwayDailyTotals):
     lastDay = broadwayDailyTotals['Date'].max()
     startDate = lastDay.date() + timedelta(days=1)
 
+    if startDate > yesterday:
+        logging.info('Data up to date.')
+        return
+    
+
     downloadDatesStr = 'Download data from ' + \
         str(startDate) + ' to ' + str(yesterday)
     logger.info(downloadDatesStr)
@@ -206,6 +213,16 @@ def records_compare(updateDaily, records):
             logger.info(recordStr)
     return records
 
+# %% Save Data
+
+
+def save_count_data(dailyCounts, records):
+    dailyCounts.to_pickle('data/braodway_daily_totals.pkl', protocol=3)
+    records.to_pickle('data/broadway_records.pkl', protocol=3)
+
+    logger.info('Saved updated daily counts and records.')
+
+
 # %% Plot Data
 
 
@@ -222,14 +239,18 @@ def main():
     try:
         results_df = query_dataset(broadwayDailyTotals)
 
-        updateDaily = daily_counts(results_df)
-
-        recordsNew = records_compare(updateDaily, broadwayRecords)
-
-        return results_df, updateDaily, recordsNew
-
     except:
         logger.error('Error updating daily data.')
+
+    else:
+        if results_df != None:
+            updateDaily = daily_counts(results_df)
+
+            recordsNew = records_compare(updateDaily, broadwayRecords)
+
+            save_count_data(updateDaily, recordsNew)
+
+            return results_df, updateDaily, recordsNew
 
 
 # %% Run Script

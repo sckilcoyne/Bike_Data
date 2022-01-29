@@ -34,14 +34,12 @@ def sleep_till(timeSleep):
     now = datetime.now()
 
 
-def test_docker():
-    while True:
-        # now = datetime.now()
-        # sleep_till()
-        now = datetime.now().strftime('%H:%M:%S')
+def testing_sleep():
 
-        logging.info('Test loop | ' + now)
-        time.sleep(5)
+    now = datetime.now().strftime('%H:%M:%S')
+
+    logging.info('Test loop | ' + now)
+    time.sleep(5)
 
 
 # %% Bot Functions
@@ -52,16 +50,13 @@ def totem_broadway():
 
 
 def main():
-    # client = create_client()
+    client = create_client()
 
-    test_docker()
+    while True:
 
-    # totem_broadway()
-    # since_id = 1
-    # while True:
-    #     since_id = check_mentions(client, ["help", "support"], since_id)
-    #     logger.info("Waiting...")
-    #     time.sleep(60)
+        totem_broadway()
+
+        testing_sleep()
 
 
 if __name__ == "__main__":
