@@ -7,20 +7,32 @@ https://realpython.com/twitter-bot-python-tweepy/#deploying-bots-to-a-server-usi
 @author: Scott
 """
 # tweepy-bots/bots/config.py
-import tweepy
 import logging
 import os
+import tweepy
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger()
 
 
 def create_client():
+    """[summary]
+
+    Raises:
+        e: [description]
+
+    Returns:
+        [type]: [description]
+    """
     consumerKey = os.getenv('CONSUMER_KEY')
     consumerSecret = os.getenv('CONSUMER_SECRET')
     accessToken = os.getenv('ACCESS_TOKEN')
     accessTokenSecret = os.getenv('ACCESS_TOKEN_SECRET')
     bearerToken = os.getenv('BEARER_TOKEN')
+
+    if None in [consumerKey, consumerSecret, accessToken, accessTokenSecret, bearerToken]:
+        logging.error('Failed to properly load env variables')
+        raise Exception('Env Variable Error')
 
     client = tweepy.Client(bearer_token=bearerToken,
                            consumer_key=consumerKey,
