@@ -11,6 +11,12 @@ import os
 
 # %% Functions
 def pickle_dict(pklDict, fileName):
+    """Dict to be saved to disc as pickle file.
+
+    Args:
+        pklDict (dict): Dict to save as pickle file.
+        fileName (str): Where to save file.
+    """
     # Save a Dict to a pickle file
 
     f = open('..\data\\' + fileName + '.pkl', 'wb')
@@ -23,6 +29,15 @@ def pickle_dict(pklDict, fileName):
 
 
 def load_pickled_dict(fileName, folder):
+    """Load dict saved in pickle file.
+
+    Args:
+        fileName (str)
+        folder (str)
+
+    Returns:
+        dict: Dict loaded from pickle file.
+    """
 
     filePath = folder + '\\' + fileName + '.pkl'
     infile = open(filePath, 'rb')
@@ -34,6 +49,11 @@ def load_pickled_dict(fileName, folder):
 
 
 def get_data_folder():
+    """Find 'data' folder in project
+
+    Returns:
+        str: 'data' folder path
+    """
     path = os.getcwd()
     currentFolder = os.path.basename(path)
     if currentFolder == 'utils':
