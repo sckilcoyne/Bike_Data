@@ -8,16 +8,17 @@ https://data.cambridgema.gov/resource/q8v9-mcfg.json
 
 # %% Initialize
 
-import pandas as pd
-from sodapy import Socrata
-from datetime import date, timedelta, datetime
-import matplotlib.pyplot as plt
 import pickle
 import time
 import calendar
 import os
 import sys
 import logging
+
+import pandas as pd
+from sodapy import Socrata
+from datetime import date, timedelta, datetime
+import matplotlib.pyplot as plt
 
 logFormat = "%(levelname)s %(asctime)s - %(message)s"
 logging.basicConfig(stream=sys.stdout,
@@ -33,6 +34,11 @@ yesterday = date.today() - timedelta(days=1)
 
 
 def load_pickled_data():
+    """[summary]
+
+    Returns:
+        [type]: [description]
+    """
     path = os.getcwd()
     currentFolder = os.path.basename(path)
     logging.debug('cwd: ' + currentFolder)
@@ -65,6 +71,11 @@ cambData = 'data.cambridgema.gov'
 
 # %% Query Dataset
 def query_precheck(dailyTotals):
+    """[summary]
+
+    Args:
+        dailyTotals ([type]): [description]
+    """
     lastDay = dailyTotals['Date'].max()
 
     if (lastDay.date() < yesterday - timedelta(days=2)):
@@ -81,7 +92,18 @@ def query_precheck(dailyTotals):
 
 
 def query_api(startDate, endDate):
+    """[summary]
 
+    Args:
+        startDate ([type]): [description]
+        endDate ([type]): [description]
+
+    Raises:
+        Exception: [description]
+
+    Returns:
+        [type]: [description]
+    """
     # queries are inclusive of start and end date
     dateString = 'date between \'' + \
         str(startDate) + '\' and \'' + str(endDate) + '\''
@@ -129,6 +151,14 @@ def query_api(startDate, endDate):
 
 
 def query_dataset(broadwayDailyTotals):
+    """[summary]
+
+    Args:
+        broadwayDailyTotals ([type]): [description]
+
+    Returns:
+        [type]: [description]
+    """
     # query_precheck(broadwayDailyTotals)
 
     # Determine missing data days to download
@@ -138,7 +168,6 @@ def query_dataset(broadwayDailyTotals):
     if startDate > yesterday:
         logging.info('Data up to date.')
         return
-    
 
     downloadDatesStr = 'Download data from ' + \
         str(startDate) + ' to ' + str(yesterday)
@@ -154,6 +183,11 @@ def query_dataset(broadwayDailyTotals):
 
 
 def check_missing_data(results_df):
+    """[summary]
+
+    Args:
+        results_df ([type]): [description]
+    """
     lastDay = datetime.date(datetime.strptime(
         results_df['Date'].max(), '%Y-%m-%dT00:00:00.000'))
 
@@ -168,6 +202,14 @@ def check_missing_data(results_df):
 
 
 def daily_counts(results_df):
+    """[summary]
+
+    Args:
+        results_df ([type]): [description]
+
+    Returns:
+        [type]: [description]
+    """
     # Total counted for each day
     updateDaily = results_df.groupby('Date')['Total'].sum().to_frame()
 
@@ -183,6 +225,17 @@ def daily_counts(results_df):
 
 
 def records_compare(updateDaily, records):
+    """[summary]
+
+    Args:
+        updateDaily ([type]): [description]
+        records ([type]): [description]
+
+    Returns:
+        [type]: [description]
+    """
+    tweetList = []
+
     for idx, day in updateDaily.iterrows():
         total = day['Total']
         dailyRecord = records['dailyRecord']
@@ -191,16 +244,10 @@ def records_compare(updateDaily, records):
         dateString = day['Date']
         dateString = dateString.strftime('%a %b %d')
 
-        countStr = 'With ' + str(total) + ' riders on ' + dateString + '...'
-        logger.info(countStr)
-        if total > dailyRecord:
-            dailyRecordStr = 'New daily record of ' + total + ' on ' + \
-                day['Date'] + '! (Previous record ' + dailyRecord + '.)'
-            logger.info(dailyRecordStr)
-            records['dailyRecord'] = total
-        else:
-            dailyRecordStr = '...did not break the all-time daily record'
-            logger.info(dailyRecordStr)
+        countStr = str(total) + ' riders on ' + dateString
+        logger.info('With ' + countStr + '...')
+
+        # Daily record for given month
         if total > monthlyRecord:
             monthName = str(calendar.month_name[day['Month']])
             dailyRecordStr = 'New daily record in ' + monthName + ' of ' + total + \
@@ -209,16 +256,31 @@ def records_compare(updateDaily, records):
             logger.info(dailyRecordStr)
             records['monthlyRecords'][day['Month']] = total
         else:
-            recordStr = '...did not break the daily record for this month'
-            logger.info(recordStr)
-    return records
+            logger.info('...did not break the daily record for this month')
+
+        # All time daily count record
+        if total > dailyRecord:
+            dailyRecordStr = 'New daily record of ' + total + ' on ' + \
+                day['Date'] + '! (Previous record ' + dailyRecord + '.)'
+            logger.info(dailyRecordStr)
+            records['dailyRecord'] = total
+        else:
+            logger.info('...did not break the all-time daily record')
+
+        if dailyRecordStr is not None:
+            tweetList.append(dailyRecordStr)
+        else:
+            tweetList.append(countStr)
+
+    return records, tweetList
 
 # %% Save Data
 
 
 def save_count_data(dailyCounts, records):
     dailyCounts.to_pickle('data/braodway_daily_totals.pkl', protocol=3)
-    records.to_pickle('data/broadway_records.pkl', protocol=3)
+    # records.to_pickle('data/broadway_records.pkl', protocol=3)
+    utils.pickle_dict(records, 'data/broadway_records.pkl')
 
     logger.info('Saved updated daily counts and records.')
 
@@ -227,13 +289,22 @@ def save_count_data(dailyCounts, records):
 
 
 def plot_data(results_df):
+    """[summary]
 
+    Args:
+        results_df ([type]): [description]
+    """
     results_df.plot('time', 'total')
 
 # %% Main
 
 
 def main():
+    """[summary]
+
+    Returns:
+        [type]: [description]
+    """
     broadwayDailyTotals, broadwayRecords = load_pickled_data()
 
     try:
@@ -243,14 +314,15 @@ def main():
         logger.error('Error updating daily data.')
 
     else:
-        if results_df != None:
+        if results_df is not None:
             updateDaily = daily_counts(results_df)
 
-            recordsNew = records_compare(updateDaily, broadwayRecords)
+            recordsNew, tweetList = records_compare(
+                updateDaily, broadwayRecords)
 
             save_count_data(updateDaily, recordsNew)
 
-            return results_df, updateDaily, recordsNew
+            return results_df, updateDaily, recordsNew, tweetList
 
 
 # %% Run Script
