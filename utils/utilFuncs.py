@@ -19,7 +19,8 @@ def pickle_dict(pklDict, fileName):
     """
     # Save a Dict to a pickle file
 
-    f = open('..\data\\' + fileName + '.pkl', 'wb')
+    # f = open('..\data\\' + fileName + '.pkl', 'wb')
+    f = open(fileName + '.pkl', 'wb')
 
     # write the python object (dict) to pickle file
     pickle.dump(pklDict, f, protocol=3)

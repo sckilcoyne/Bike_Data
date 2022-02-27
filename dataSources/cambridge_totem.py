@@ -15,10 +15,13 @@ import os
 import sys
 import logging
 
+sys.path.insert(0,os.getcwd())
+
 import pandas as pd
 from sodapy import Socrata
 from datetime import date, timedelta, datetime
 import matplotlib.pyplot as plt
+import utils.utilFuncs as utils
 
 logFormat = "%(levelname)s %(asctime)s - %(message)s"
 logging.basicConfig(stream=sys.stdout,
@@ -244,15 +247,19 @@ def records_compare(updateDaily, records):
         dateString = day['Date']
         dateString = dateString.strftime('%a %b %d')
 
+        localeStr = 'Broadway in Cambridge\n'
+
         countStr = str(total) + ' riders on ' + dateString
         logger.info('With ' + countStr + '...')
+
+        dailyRecordStr = None
 
         # Daily record for given month
         if total > monthlyRecord:
             monthName = str(calendar.month_name[day['Month']])
-            dailyRecordStr = 'New daily record in ' + monthName + ' of ' + total + \
-                ' on ' + day['Date'] + \
-                '! (Previous record ' + monthlyRecord + '.)'
+            dailyRecordStr = 'New daily record for month of ' + monthName + ' of ' + total + \
+                ' riders on ' + day['Date'] + \
+                '! (Previous record for month was ' + monthlyRecord + '.)'
             logger.info(dailyRecordStr)
             records['monthlyRecords'][day['Month']] = total
         else:
@@ -260,7 +267,7 @@ def records_compare(updateDaily, records):
 
         # All time daily count record
         if total > dailyRecord:
-            dailyRecordStr = 'New daily record of ' + total + ' on ' + \
+            dailyRecordStr = 'New all-time daily record of ' + total + ' riders on ' + \
                 day['Date'] + '! (Previous record ' + dailyRecord + '.)'
             logger.info(dailyRecordStr)
             records['dailyRecord'] = total
@@ -268,9 +275,9 @@ def records_compare(updateDaily, records):
             logger.info('...did not break the all-time daily record')
 
         if dailyRecordStr is not None:
-            tweetList.append(dailyRecordStr)
+            tweetList.append(localeStr + dailyRecordStr)
         else:
-            tweetList.append(countStr)
+            tweetList.append(localeStr + countStr)
 
     return records, tweetList
 
@@ -314,6 +321,8 @@ def main():
         logger.error('Error updating daily data.')
 
     else:
+        logging.debug(type(results_df))
+
         if results_df is not None:
             updateDaily = daily_counts(results_df)
 
@@ -322,9 +331,17 @@ def main():
 
             save_count_data(updateDaily, recordsNew)
 
-            return results_df, updateDaily, recordsNew, tweetList
+            logging.debug(type(results_df), type(updateDaily),
+                          type(recordsNew), type(tweetList))
+
+            return tweetList, results_df, updateDaily, recordsNew
 
 
 # %% Run Script
 if __name__ == '__main__':
-    main()
+    outputs = main()
+    if outputs is not None:
+        tweetList, results_df, updateDaily, recordsNew = outputs
+        logging.info(tweetList)
+    else:
+        logging.info('No outputs from Cambridge Totem Data')
