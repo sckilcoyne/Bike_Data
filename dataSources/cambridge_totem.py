@@ -23,13 +23,16 @@ from datetime import date, timedelta, datetime
 import matplotlib.pyplot as plt
 import utils.utilFuncs as utils
 
-logFormat = "%(levelname)s %(asctime)s - %(message)s"
-logging.basicConfig(stream=sys.stdout,
-                    level=logging.INFO,
-                    format=logFormat)
-logger = logging.getLogger()
-# streamHandler = logging.StreamHandler(sys.stdout)
-# logger.addHandler(streamHandler)
+# logFormat = "%(levelname)s %(asctime)s - %(message)s"
+# logFormat = "%(message)s"
+# logging.basicConfig(stream=sys.stdout,
+#                     level=logging.INFO,
+#                     format=logFormat)
+logger = logging.getLogger(__name__)
+logger.setLevel(logging.INFO)
+consoleStream = logging.StreamHandler(stream=sys.stdout)
+# consoleStream.setFormatter(logFormat)
+logger.addHandler(consoleStream)
 
 yesterday = date.today() - timedelta(days=1)
 
@@ -199,7 +202,7 @@ def check_missing_data(results_df):
     if lastDay < yesterday:
         firstMissing = lastDay + timedelta(days=1)
 
-        dataUpdateStr = 'NOTE: Data not updated from ' + \
+        dataUpdateStr = 'NOTE: Data not updated/returned from ' + \
             str(firstMissing) + ' to ' + str(yesterday) + '\n'
         logger.info(dataUpdateStr)
 
@@ -247,7 +250,7 @@ def records_compare(updateDaily, records):
         dateString = day['Date']
         dateString = dateString.strftime('%a %b %d')
 
-        localeStr = 'Broadway in Cambridge\n'
+        localeStr = 'Broadway in Cambridge (Eco-Totem)\n'
 
         countStr = str(total) + ' riders on ' + dateString
         logger.info('With ' + countStr + '...')

@@ -9,10 +9,16 @@ https://realpython.com/twitter-bot-python-tweepy/#deploying-bots-to-a-server-usi
 # tweepy-bots/bots/config.py
 import logging
 import os
+import sys
 import tweepy
 
-logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger()
+# logFormat = "%(levelname)s %(asctime)s - %(message)s"
+# logFormat = "%(message)s"
+logger = logging.getLogger(__name__)
+logger.setLevel(logging.INFO)
+consoleStream = logging.StreamHandler(stream=sys.stdout)
+# consoleStream.setFormatter(logFormat)
+logger.addHandler(consoleStream)
 
 
 def create_client():

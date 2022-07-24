@@ -9,7 +9,7 @@ Created on Mon Nov 29 20:21:23 2021
 from datetime import datetime
 import time
 
-import os
+# import os
 import sys
 import logging
 
@@ -17,14 +17,16 @@ from utils.configTwitterBot import create_client
 from dataSources import cambridge_totem as totem
 
 
-# logging.basicConfig(level=logging.INFO)
-# logger = logging.getLogger()
-
-logFormat = "%(levelname)s %(asctime)s - %(message)s"
-logging.basicConfig(stream=sys.stdout,
-                    level=logging.INFO,
-                    format=logFormat)
-logger = logging.getLogger()
+# logFormat = "%(levelname)s %(asctime)s - %(message)s"
+# logFormat = "%(message)s"
+# logging.basicConfig(stream=sys.stdout,
+#                     level=logging.INFO,
+#                     format=logFormat)
+logger = logging.getLogger(__name__)
+logger.setLevel(logging.INFO)
+consoleStream = logging.StreamHandler(stream=sys.stdout)
+# consoleStream.setFormatter(logFormat)
+logger.addHandler(consoleStream)
 
 # %% Functions
 
@@ -43,8 +45,8 @@ def testing_sleep():
     """
     now = datetime.now().strftime('%H:%M:%S')
 
-    logging.info('Test loop | ' + now)
-    time.sleep(10)
+    logging.info('Test loop | %s', now)
+    time.sleep(20)
 
 
 # %% Bot Functions
@@ -68,11 +70,16 @@ def main():
 
     while True:
 
-        tweetList = totem_broadway()
+        tweetList, results_df, updateDaily, recordsNew = totem_broadway()
 
         if tweetList is not None:
+            print('Tweet list:')
+            print(tweetList)
+
+            print('Tweets:')
             for tweet in tweetList:
                 logging.info(tweet)
+                print(tweet)
                 client.create_tweet(text=tweet)
         else:
             logging.info('No tweets')
