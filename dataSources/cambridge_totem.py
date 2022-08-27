@@ -7,34 +7,33 @@ https://data.cambridgema.gov/resource/q8v9-mcfg.json
 """
 
 # %% Initialize
+# pylint: disable=invalid-name
 
+# Import standard modules
 import pickle
-import time
+# import time
 import calendar
 import os
 import sys
 import logging
-
-sys.path.insert(0,os.getcwd())
+from datetime import date, timedelta, datetime
+from sodapy import Socrata
 
 import pandas as pd
-from sodapy import Socrata
-from datetime import date, timedelta, datetime
-import matplotlib.pyplot as plt
+# import matplotlib.pyplot as plt
+
+# ?Add project folder to be able to import custom modules?
+sys.path.insert(0,os.getcwd())
+
+# Import custom modules
+# pylint: disable=import-error, wrong-import-position
 import utils.utilFuncs as utils
+# pylint:enable=import-error, wrong-import-position
 
-# logFormat = "%(levelname)s %(asctime)s - %(message)s"
-# logFormat = "%(message)s"
-# logging.basicConfig(stream=sys.stdout,
-#                     level=logging.INFO,
-#                     format=logFormat)
+# Set up logging
+# https://stackoverflow.com/questions/15727420/using-logging-in-multiple-modules
 logger = logging.getLogger(__name__)
-logger.setLevel(logging.INFO)
-consoleStream = logging.StreamHandler(stream=sys.stdout)
-# consoleStream.setFormatter(logFormat)
-logger.addHandler(consoleStream)
-
-yesterday = date.today() - timedelta(days=1)
+logger.setLevel(logging.DEBUG)
 
 # %% Load Pickled Data
 
@@ -47,18 +46,22 @@ def load_pickled_data():
     """
     path = os.getcwd()
     currentFolder = os.path.basename(path)
-    logging.debug('cwd: ' + currentFolder)
+    logger.debug('cwd: %s', currentFolder)
+    # print('print: cwd: ', currentFolder)
 
     if currentFolder == 'dataSources':
         parent = os.path.dirname(path)
-        dataFolder = parent + '\data'
+        dataFolder = parent + '/data'
     else:
-        dataFolder = path + '\data'
+        dataFolder = path + '/data'
+
+    logger.info('dataFolder: %s', dataFolder)
+    logger.info('dataFolder contents: %s', os.listdir(path=dataFolder))
 
     broadwayDailyTotals = pd.read_pickle(
-        dataFolder + r'\braodway_daily_totals.pkl')
+        dataFolder + '/broadway_daily_totals.pkl')
 
-    infile = open(dataFolder + r'\broadway_records.pkl', 'rb')
+    infile = open(dataFolder + '/broadway_records.pkl', 'rb')
     broadwayRecords = pickle.load(infile)
     # print(records)
     infile.close()
@@ -76,25 +79,26 @@ cambData = 'data.cambridgema.gov'
 
 
 # %% Query Dataset
-def query_precheck(dailyTotals):
-    """[summary]
+# def query_precheck(dailyTotals):
+#     """[summary]
 
-    Args:
-        dailyTotals ([type]): [description]
-    """
-    lastDay = dailyTotals['Date'].max()
+#     Args:
+#         dailyTotals ([type]): [description]
+#     """
+#     lastDay = dailyTotals['Date'].max()
+#     yesterday = date.today() - timedelta(days=1)
 
-    if (lastDay.date() < yesterday - timedelta(days=2)):
-        # Need to get multiple days worth of data and iterate over each
-        logger.info('Data last saved multiple days ago')
-        query_api(yesterday, lastDay.date())
-    elif (lastDay.date() == yesterday - timedelta(days=1)) & (time.localtime().tm_hour > 13):
-        # Pull yesterday's data
-        logger.info('last data two days ago and it is past 1pm')
-        query_api(yesterday)
-    else:
-        # Don't need to query
-        logger.info('Saved data is current')
+#     if (lastDay.date() < yesterday - timedelta(days=2)):
+#         # Need to get multiple days worth of data and iterate over each
+#         logger.info('Data last saved multiple days ago')
+#         query_api(yesterday, lastDay.date())
+#     elif (lastDay.date() == yesterday - timedelta(days=1)) & (time.localtime().tm_hour > 13):
+#         # Pull yesterday's data
+#         logger.info('last data two days ago and it is past 1pm')
+#         query_api(yesterday)
+#     else:
+#         # Don't need to query
+#         logger.info('Saved data is current')
 
 
 def query_api(startDate, endDate):
@@ -131,6 +135,7 @@ def query_api(startDate, endDate):
 
     if results == []:
         logger.error('No downloaded data.')
+        # print('print: No downloaded data.')
         raise Exception('Data Download Failure')
 
     # Convert to pandas DataFrame
@@ -156,7 +161,7 @@ def query_api(startDate, endDate):
     return results_df
 
 
-def query_dataset(broadwayDailyTotals):
+def query_dataset(broadwayDailyTotals=None):
     """[summary]
 
     Args:
@@ -168,16 +173,25 @@ def query_dataset(broadwayDailyTotals):
     # query_precheck(broadwayDailyTotals)
 
     # Determine missing data days to download
-    lastDay = broadwayDailyTotals['Date'].max()
+    if broadwayDailyTotals is not None:
+        lastDay = broadwayDailyTotals['Date'].max()
+    else:
+        lastDay = date.today() - timedelta(days=5)
+
     startDate = lastDay.date() + timedelta(days=1)
+    yesterday = date.today() - timedelta(days=1)
+        
+
 
     if startDate > yesterday:
-        logging.info('Data up to date.')
+        logger.info('Data up to date.')
+        # print('print: Data up to date.')
         return
 
     downloadDatesStr = 'Download data from ' + \
         str(startDate) + ' to ' + str(yesterday)
     logger.info(downloadDatesStr)
+    # print('print: ', downloadDatesStr)
 
     # Download data
     results_df = query_api(startDate, yesterday)
@@ -196,6 +210,7 @@ def check_missing_data(results_df):
     """
     lastDay = datetime.date(datetime.strptime(
         results_df['Date'].max(), '%Y-%m-%dT00:00:00.000'))
+    yesterday = date.today() - timedelta(days=1)
 
     # print(lastDay, type(lastDay))
 
@@ -205,6 +220,7 @@ def check_missing_data(results_df):
         dataUpdateStr = 'NOTE: Data not updated/returned from ' + \
             str(firstMissing) + ' to ' + str(yesterday) + '\n'
         logger.info(dataUpdateStr)
+        # print('print: ', dataUpdateStr)
 
 
 def daily_counts(results_df):
@@ -253,7 +269,7 @@ def records_compare(updateDaily, records):
         localeStr = 'Broadway in Cambridge (Eco-Totem)\n'
 
         countStr = str(total) + ' riders on ' + dateString
-        logger.info('With ' + countStr + '...')
+        logger.info('With %s ...', countStr)
 
         dailyRecordStr = None
 
@@ -288,9 +304,15 @@ def records_compare(updateDaily, records):
 
 
 def save_count_data(dailyCounts, records):
-    dailyCounts.to_pickle('data/braodway_daily_totals.pkl', protocol=3)
+    """_summary_
+
+    Args:
+        dailyCounts (_type_): _description_
+        records (_type_): _description_
+    """
+    dailyCounts.to_pickle('data/broadway_daily_totals.pkl', protocol=3)
     # records.to_pickle('data/broadway_records.pkl', protocol=3)
-    utils.pickle_dict(records, 'data/broadway_records.pkl')
+    utils.pickle_dict(records, 'data/broadway_records')
 
     logger.info('Saved updated daily counts and records.')
 
@@ -315,16 +337,25 @@ def main():
     Returns:
         [type]: [description]
     """
-    broadwayDailyTotals, broadwayRecords = load_pickled_data()
+    logger.info('Execute cambridge_totem>main')
+    # print('print: Execute cambridge_totem>main')
+
+    try:
+        broadwayDailyTotals, broadwayRecords = load_pickled_data()
+    except Exception as e:
+        logger.error('Failed to load pickeled data.',  exc_info=e)
+        # print('print: Failed to load pickeled data.\n', e)
 
     try:
         results_df = query_dataset(broadwayDailyTotals)
 
-    except:
-        logger.error('Error updating daily data.')
+    except Exception as e:
+        logger.error('Error updating daily data.',  exc_info=e)
+        # print('print: Error updating daily data.') 
+        return None, None, None, None
 
     else:
-        logging.debug(type(results_df))
+        logger.debug(type(results_df))
 
         if results_df is not None:
             updateDaily = daily_counts(results_df)
@@ -334,17 +365,26 @@ def main():
 
             save_count_data(updateDaily, recordsNew)
 
-            logging.debug(type(results_df), type(updateDaily),
+            logger.debug(type(results_df), type(updateDaily),
                           type(recordsNew), type(tweetList))
 
             return tweetList, results_df, updateDaily, recordsNew
+        else:
+            return None, None, None, None
 
 
 # %% Run Script
 if __name__ == '__main__':
+    # pylint: disable=ungrouped-imports
+    import logging.config
+    # logging.config.fileConfig(os.path.join( os.getcwd(), '..', 'log.conf'))
+    logging.config.fileConfig('log.conf')
+    logger = logging.getLogger(__name__)
+    logger.debug("Logging is configured.")
+
     outputs = main()
     if outputs is not None:
         tweetList, results_df, updateDaily, recordsNew = outputs
-        logging.info(tweetList)
+        logger.info(tweetList)
     else:
-        logging.info('No outputs from Cambridge Totem Data')
+        logger.info('No outputs from Cambridge Totem Data')

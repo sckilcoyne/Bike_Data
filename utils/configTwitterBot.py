@@ -6,21 +6,21 @@ https://realpython.com/twitter-bot-python-tweepy/#deploying-bots-to-a-server-usi
 
 @author: Scott
 """
+# %% Intialize
+# pylint: disable=invalid-name
+
 # tweepy-bots/bots/config.py
 import logging
 import os
-import sys
+# import sys
 import tweepy
 
-# logFormat = "%(levelname)s %(asctime)s - %(message)s"
-# logFormat = "%(message)s"
+# Set up logging
+# https://stackoverflow.com/questions/15727420/using-logging-in-multiple-modules
 logger = logging.getLogger(__name__)
-logger.setLevel(logging.INFO)
-consoleStream = logging.StreamHandler(stream=sys.stdout)
-# consoleStream.setFormatter(logFormat)
-logger.addHandler(consoleStream)
+# logger.setLevel(logging.INFO)
 
-
+# %% Creat Client
 def create_client():
     """[summary]
 
@@ -37,7 +37,7 @@ def create_client():
     bearerToken = os.getenv('BEARER_TOKEN')
 
     if None in [consumerKey, consumerSecret, accessToken, accessTokenSecret, bearerToken]:
-        logging.error('Failed to properly load env variables')
+        logger.error('Failed to properly load env variables')
         raise Exception('Env Variable Error')
 
     client = tweepy.Client(bearer_token=bearerToken,
@@ -49,13 +49,20 @@ def create_client():
     try:
         user = client.get_user(username='bostonbikedata')
         logger.info(user)
-        # print(user)
+        # print('print: ', user)
     except Exception as e:
         logger.error("Error creating API", exc_info=True)
+        # print('print: Error creating API\n', e)
         raise e
     logger.info("API created")
+    # print('print: API created')
     return client
 
-
+# %% Run as Script
 if __name__ == "__main__":
+    import logging.config
+    # logging.config.fileConfig(os.path.join( os.getcwd(), '..', 'log.conf'))
+    logging.config.fileConfig('log.conf')
+    logger = logging.getLogger(__name__)
+    logger.debug("Logging is configured.")
     create_client()

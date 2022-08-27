@@ -5,6 +5,7 @@ FROM python:3.9-slim
 
 COPY utils /utils
 COPY dataSources /dataSources
+COPY log.conf .
 COPY tweet_bot.py .
 
 COPY requirements.txt /tmp
