@@ -55,8 +55,8 @@ def load_pickled_data():
     else:
         dataFolder = path + '/data'
 
-    logger.info('dataFolder: %s', dataFolder)
-    logger.info('dataFolder contents: %s', os.listdir(path=dataFolder))
+    logger.debug('dataFolder: %s', dataFolder)
+    logger.debug('dataFolder contents: %s', os.listdir(path=dataFolder))
 
     broadwayDailyTotals = pd.read_pickle(
         dataFolder + '/broadway_daily_totals.pkl')
