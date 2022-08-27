@@ -1,4 +1,5 @@
 # Ignore directories
 secrets/
+data/
 .vscode/
 *.pyc
