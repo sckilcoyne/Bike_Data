@@ -49,17 +49,15 @@ def create_client():
     try:
         user = client.get_user(username='bostonbikedata')
         logger.info(user)
-        # print('print: ', user)
     except Exception as e:
         logger.error("Error creating API", exc_info=True)
-        # print('print: Error creating API\n', e)
         raise e
     logger.info("API created")
-    # print('print: API created')
     return client
 
 # %% Run as Script
 if __name__ == "__main__":
+    # pylint: disable=ungrouped-imports
     import logging.config
     # logging.config.fileConfig(os.path.join( os.getcwd(), '..', 'log.conf'))
     logging.config.fileConfig('log.conf')
