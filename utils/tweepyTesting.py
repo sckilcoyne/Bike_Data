@@ -1,5 +1,6 @@
 # import tweepy
 
+# pylint: disable=import-error
 from configTwitterBot import create_client
 
 testTweet = 'This is line 1\nThis is line 2'

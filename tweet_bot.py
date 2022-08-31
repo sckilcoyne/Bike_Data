@@ -19,6 +19,7 @@ import logging.config
 # pylint: disable=import-error
 from utils.configTwitterBot import create_client
 from dataSources import cambridge_totem as totem
+from dataSources import retweeter
 # pylint: enable=import-error
 
 # Set up logging
@@ -57,7 +58,13 @@ def sleep_time(timeSleep=1*60*60):
 
 
 def main():
-    """[summary]
+    """
+    All of the functions for the Twitter bot.
+
+    Perform each task then take a nap for a little before repeating.
+
+    Totem: Fetch and Calculate daily riders on Boradway in Cambridge, recorded by the Eco-Totem.
+    Retweeter: Automatically retweet CambridgeCrash when the crash involves a cyclist.
     """
     # Create client to Twitter API
     client = create_client()
@@ -81,6 +88,15 @@ def main():
             logger.info('tweet_bot>totem.main() raised exception. Continue on...', exc_info=e)
             # pass
 
+
+        # Retweet
+        try:
+            retweeter.main(client)
+        except Exception as e:
+            logger.info('tweet_bot>retweeter.main() raised exception. Continue on...', exc_info=e)
+
+
+        # Time for a nap
         sleep_time()
 
 

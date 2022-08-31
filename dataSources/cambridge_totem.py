@@ -7,7 +7,7 @@ https://data.cambridgema.gov/resource/q8v9-mcfg.json
 """
 
 # %% Initialize
-# pylint: disable=invalid-name
+# pylint: disable=invalid-name, broad-except
 
 # Import standard modules
 import pickle
