@@ -7,7 +7,7 @@ https://data.cambridgema.gov/resource/q8v9-mcfg.json
 """
 
 # %% Initialize
-# pylint: disable=invalid-name
+# pylint: disable=invalid-name, broad-except
 
 # Import standard modules
 import pickle
@@ -47,7 +47,6 @@ def load_pickled_data():
     path = os.getcwd()
     currentFolder = os.path.basename(path)
     logger.debug('cwd: %s', currentFolder)
-    # print('print: cwd: ', currentFolder)
 
     if currentFolder == 'dataSources':
         parent = os.path.dirname(path)
@@ -191,11 +190,9 @@ def query_dataset(broadwayDailyTotals=None):
     downloadDatesStr = 'Download data from ' + \
         str(startDate) + ' to ' + str(yesterday)
     logger.info(downloadDatesStr)
-    # print('print: ', downloadDatesStr)
 
     # Download data
     results_df = query_api(startDate, yesterday)
-    # print(results_df)
 
     check_missing_data(results_df)
 
@@ -220,7 +217,6 @@ def check_missing_data(results_df):
         dataUpdateStr = 'NOTE: Data not updated/returned from ' + \
             str(firstMissing) + ' to ' + str(yesterday) + '\n'
         logger.info(dataUpdateStr)
-        # print('print: ', dataUpdateStr)
 
 
 def daily_counts(results_df):
@@ -338,20 +334,17 @@ def main():
         [type]: [description]
     """
     logger.info('Execute cambridge_totem>main')
-    # print('print: Execute cambridge_totem>main')
 
     try:
         broadwayDailyTotals, broadwayRecords = load_pickled_data()
     except Exception as e:
         logger.error('Failed to load pickeled data.',  exc_info=e)
-        # print('print: Failed to load pickeled data.\n', e)
 
     try:
         results_df = query_dataset(broadwayDailyTotals)
 
     except Exception as e:
         logger.error('Error updating daily data.',  exc_info=e)
-        # print('print: Error updating daily data.') 
         return None, None, None, None
 
     else:
