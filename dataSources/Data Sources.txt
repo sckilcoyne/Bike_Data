@@ -1,6 +1,14 @@
+# Eco-Totem
 https://data.cambridgema.gov/Transportation-Planning/Eco-Totem-Broadway-Bicycle-Count/q8v9-mcfg
+https://data.eco-counter.com/ParcPublic/?id=4586#
+
+# Bluebikes
 https://www.bluebikes.com/system-data
 https://gbfs.bluebikes.com/gbfs/gbfs.json
-https://data.eco-counter.com/ParcPublic/?id=4586#
+
+# Commonwealth Connect
 http://dev.seeclickfix.com/
 https://data.cambridgema.gov/Public-Works/Commonwealth-Connect-Service-Requests/2z9k-mv9g
+
+# MassDOT Non-Motorized Database System
+https://mhd.ms2soft.com/TDMS.UI/nmds/dashboard?loc=mhd
