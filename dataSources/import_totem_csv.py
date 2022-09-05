@@ -11,24 +11,53 @@ https://data.cambridgema.gov/Transportation-Planning/Eco-Totem-Broadway-Bicycle-
 """
 
 # %% Initialize
-import pandas as pd
+# pylint: disable=invalid-name
+
+import logging
+import sys
+import os
 # import pickle
-import utils.utilFuncs as utils
 # import csv
 import requests
-import logging
+import pandas as pd
+
+# Custom Modules
+# ?Add project folder to be able to import custom modules?
+sys.path.insert(0,os.getcwd())
+# pylint: disable=import-error, wrong-import-position
+import utils.utilFuncs as utils
+# pylint: enable=import-error, wrong-import-position
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger()
 
-dataset = '..\data\Eco-Totem_Broadway_Bicycle_Count.csv'
+# Set location of csv file
+path = os.getcwd()
+currentFolder = os.path.basename(path)
+logger.debug('cwd: %s', currentFolder)
+
+if currentFolder == 'dataSources':
+    parent = os.path.dirname(path)
+    dataFolder = parent + '/data'
+else:
+    dataFolder = path + '/data'
+
+datasetCSVlocation = dataFolder + '/Eco-Totem_Broadway_Bicycle_Count.csv'
 
 
 # %% Load Full Dataset
 
 
-def load_dataset(dataset):
-    history = pd.read_csv(dataset)
+def load_dataset(totemdataset):
+    """_summary_
+
+    Args:
+        dataset (_type_): _description_
+
+    Returns:
+        _type_: _description_
+    """    
+    history = pd.read_csv(totemdataset)
 
     # Clean up data
     history['DateTime'] = pd.to_datetime(history['DateTime'])
@@ -41,20 +70,32 @@ def load_dataset(dataset):
     return history
 
 
-def download_dataset(dataset):
+def download_dataset(filename):
+    """Download full dataset of Cambridge Boradway Totem
+
+    Args:
+        filename (str): file to save dataset to. Full folder and filename with extension.
+    """
     url = 'https://data.cambridgema.gov/api/views/q8v9-mcfg/rows.csv'
 
     response = requests.get(url)
 
-    file = open(dataset, 'wb')
-    file.write(response.content)
-    file.close()
+    with open(filename, 'wb') as file:
+        file.write(response.content)
 
 
 # %% Get Records
 
 
 def daily_totals(history):
+    """Calculate total daily rider volume for each day
+
+    Args:
+        history (_type_): _description_
+
+    Returns:
+        dailyTotals: _description_
+    """
     # Total counted for each day
     dailyTotals = history.groupby('Date')['Total'].sum().to_frame()
 
@@ -63,10 +104,21 @@ def daily_totals(history):
 
     dailyTotals['Year'] = dailyTotals['Date'].dt.year
     dailyTotals['Month'] = dailyTotals['Date'].dt.month
+    dailyTotals['MonthName'] = dailyTotals['Date'].dt.month_name()
+    dailyTotals['DayofWeek'] = dailyTotals['Date'].dt.day_name()
+
     return dailyTotals
 
 
 def record_daily_month(dailyTotals):
+    """Calculate highest daily rider volume for each month
+
+    Args:
+        dailyTotals (_type_): _description_
+
+    Returns:
+        monthTotals: _description_
+    """
     # Highest day for each month
     monthTotals = dailyTotals.groupby('Month')['Total'].max()
 
@@ -74,6 +126,15 @@ def record_daily_month(dailyTotals):
 
 
 def create_records(history):
+    """Calculate records based on daily totals
+
+    Args:
+        history (_type_): _description_
+
+    Returns:
+        dailyTotals: _description_
+        recordsDict:
+    """
     # Create a dict with all records
     dailyTotals = daily_totals(history)
 
@@ -91,17 +152,25 @@ def create_records(history):
 
 
 def main():
+    """
+    Directly update Totem data from Cambridge.
+
+    - Download full dataset
+    - Create daily totals for each day
+    - Create daily records for each month.
+    """
+
     if input('Download full dataset? (y)  ') == 'y':
         logger.info('Downloading dataset...')
-        download_dataset(dataset)
+        download_dataset(datasetCSVlocation)
         logger.info('Download complete')
 
     logger.info('Loading dataset...')
-    history = load_dataset(dataset)
+    history = load_dataset(datasetCSVlocation)
 
     dailyTotals, records = create_records(history)
 
-    dailyTotals.to_pickle('../data/braodway_daily_totals.pkl', protocol=3)
+    dailyTotals.to_pickle(dataFolder + '/broadway_daily_totals.pkl', protocol=3)
     utils.pickle_dict(records, 'broadway_records')
 
     logger.info('History and records saved')
