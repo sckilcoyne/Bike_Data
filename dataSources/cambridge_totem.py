@@ -295,9 +295,11 @@ def records_compare(broadwayDailyTotals, updateDaily, records):
             (broadwayDailyTotals['DayofWeek'] == dayofWeek)]
 
         percentile = stats.percentileofscore(selection['Total'], total)
+        percentileStr = f'{percentile:.0f}'
+        logger.info('%s percentile of trips for day of month', percentileStr)
 
         if percentile > 50:
-            percentileStr = f'\n\n{percentile:.0f} percentile of {dayofWeek}s in {monthName}'
+            percentileStr = f'\n\n{percentileStr} percentile of {dayofWeek}s in {monthName}'
         else:
             percentileStr = ''
 

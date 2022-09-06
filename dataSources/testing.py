@@ -31,8 +31,8 @@ broadwayDailyTotals.to_pickle(
         dataFolder + '/broadway_daily_totals.pkl')
 
 
-month = 'August'
-day = 'Friday'
+month = 'September'
+day = 'Monday'
 
 selection = broadwayDailyTotals[
     (broadwayDailyTotals['MonthName'] == month) &
@@ -41,7 +41,7 @@ selection = broadwayDailyTotals[
 # print(selection)
 # print(selection['Total'])
 
-print(stats.percentileofscore(selection['Total'], 2000))
+print(stats.percentileofscore(selection['Total'], 841))
 
 # grouped = broadwayDailyTotals.groupby(['MonthName', 'DayofWeek'])
 
