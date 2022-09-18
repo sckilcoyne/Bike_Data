@@ -10,31 +10,9 @@ import pandas as pd
 # pylint: disable=broad-except, invalid-name
 
 # %% Station IDs
-#4001 - Minuteman Commuter Bikeway, Lexington, Middlesex
-#3001 - Bruce Freeman Rail Trail, Acton, Middlesex
-#4004_SB - Fellwsay (Route 28), Medford, Middlesex
-#4004_NB - Fellsway (Route 28), Medford, Middlesex
-#4003_SB - Bridge Street, Lowell, Middlesex
-#4003_NB - Bridge Street, Lowell, Middlesex
-#4003_WB - Veterans of Foreign Wars Highway, Lowell, Middlesex
-#4003_EB - Veterans of Foreign Wars Highway, Lowell, Middlesex
-#4002_NB - Sgt James Ayube Memorial Drive, Salem, Essex
-#4002_SB - Sgt James Ayube Memorial Drive, Salem, Essex
-#5001_SB - Brayton Ave, Fall River, Bristol
-#5001_WB - Brayton Ave, Fall River, Bristol
-#5001_EB - Brayton Ave, Fall River, Bristol
-#5002_WB - Centre St, Brockton, Plymouth
-#5002_EB - Centre St, Brockton, Plymouth
-
-#6002_WB - Longfellow Bridge, Cambridge, Suffolk
-#6002_EB - Longfellow Bridge, Cambridge, Suffolk
-#6003_EB - Charles River Dam Rd, Boston, Suffolk
-#6001_EB - Charles River Dam Road, Cambridge, Middlesex
-#6001_WB - Charles River Dam Road, Cambridge, Middlesex
-
 stations = {
-    4001:{
-        'ID': 4001,
+    '4001':{
+        'ID': '4001',
         'Description': 'Minuteman Commuter Bikeway',
         'Community': 'Lexington',
         'County': 'Middlesex',
@@ -46,8 +24,252 @@ stations = {
         'ReportLocationSetId': 5224,
         'LocationSetId': 2763970,
         },
-    3001: {
+    '3001': {
+        'ID': '3001',
         'Description': 'Bruce Freeman Rail Trail',
+        'Community': 'Acton',
+        'County': 'Middlesex',
+        'Info': 'MHD Owned: CMU Device',
+        'District': 3,
+        'Area Type': 'Rural',
+        'Functional Class': 'Trail or Shared Use Path',
+        'Qc Group': 'Basic QC',
+        'ReportLocationSetId': 5228,
+        'LocationSetId': 2764341,
+        },
+    '4004_SB': {
+        'ID': '4004_SB',
+        'Description': 'Fellwsay (Route 28)',
+        'Community': 'Medford',
+        'County': 'Middlesex',
+        'Info': 'MHD owned: Q-Free Hi-Trac CMU',
+        'District': 4,
+        'Area Type': 'Urban',
+        'Functional Class': 'Principal Arterial – Other',
+        'Qc Group': 'Basic QC',
+        'ReportLocationSetId': 5230,
+        'LocationSetId': 2764347,
+        },
+    '4004_NB': {
+        'ID': '4004_NB',
+        'Description': 'Fellwsay (Route 28)',
+        'Community': 'Medford',
+        'County': 'Middlesex',
+        'Info': 'MHD owned: Q-Free Hi-Trac CMU',
+        'District': 4,
+        'Area Type': 'Urban',
+        'Functional Class': 'Principal Arterial – Other',
+        'Qc Group': 'Basic QC',
+        'ReportLocationSetId': 5231,
+        'LocationSetId': 2764350,
+        },
+    '4003_SB': {
+        'ID': '4003_SB',
+        'Description': 'Bridge Street',
+        'Community': 'Lowell',
+        'County': 'Middlesex',
+        'Info': 'MHD owned: Miovision Data',
+        'District': 4,
+        'Area Type': 'Urban',
+        'Functional Class': 'Principal Arterial – Other',
+        'Qc Group': 'Default Group',
+        'ReportLocationSetId': 5232,
+        'LocationSetId': 2764353,
+        },
+    '4003_NB': {
+        'ID': '4003_NB',
+        'Description': 'Bridge Street',
+        'Community': 'Lowell',
+        'County': 'Middlesex',
+        'Info': 'MHD owned: Miovision Data',
+        'District': 4,
+        'Area Type': 'Urban',
+        'Functional Class': 'Principal Arterial – Other',
+        'Qc Group': 'Default Group',
+        'ReportLocationSetId': 5233,
+        'LocationSetId': 2764356,
+        },
+    '4003_WB': {
+        'ID': '4003_NB',
+        'Description': 'Veterans of Foreign Wars Highway',
+        'Community': 'Lowell',
+        'County': 'Middlesex',
+        'Info': 'MHD owned: Miovision Data',
+        'District': 4,
+        'Area Type': 'Urban',
+        'Functional Class': 'Principal Arterial – Other',
+        'Qc Group': 'Default Group',
+        'ReportLocationSetId': 5234,
+        'LocationSetId': 2764359,
+        },
+    '4003_EB': {
+        'ID': '4003_EB',
+        'Description': 'Veterans of Foreign Wars Highway',
+        'Community': 'Lowell',
+        'County': 'Middlesex',
+        'Info': 'MHD owned: Miovision Data',
+        'District': 4,
+        'Area Type': 'Urban',
+        'Functional Class': 'Principal Arterial – Other',
+        'Qc Group': 'Default Group',
+        'ReportLocationSetId': 5235,
+        'LocationSetId': 2764362,
+        },
+    '4002_NB': {
+        'ID': '4002_NB',
+        'Description': 'Sgt James Ayube Memorial Drive',
+        'Community': 'Salem',
+        'County': 'Essex',
+        'Info': 'MHD owned: Eco Counter',
+        'District': 4,
+        'Area Type': 'Urban',
+        'Functional Class': 'Principal Arterial – Other',
+        'Qc Group': 'Basic QC',
+        'ReportLocationSetId': 5236,
+        'LocationSetId': 2764364,
+        },
+    '4002_SB': {
+        'ID': '4002_SB',
+        'Description': 'Sgt James Ayube Memorial Drive',
+        'Community': 'Salem',
+        'County': 'Essex',
+        'Info': 'MHD owned: Eco Counter',
+        'District': 4,
+        'Area Type': 'Urban',
+        'Functional Class': 'Principal Arterial – Other',
+        'Qc Group': 'Basic QC',
+        'ReportLocationSetId': 5237,
+        'LocationSetId': 2764366,
+        },
+    '5001_SB': {
+        'ID': '5001_SB',
+        'Description': 'Brayton Ave',
+        'Community': 'Fall River',
+        'County': 'Bristol',
+        'Info': 'Crosswalk Ped Counts - MHD Owned Miovision Data',
+        'District': 5,
+        'Area Type': 'Urban',
+        'Functional Class': '',
+        'Qc Group': 'Basic QC',
+        'ReportLocationSetId': 5238,
+        'LocationSetId': 2764372,
+        },
+    '5001_WB': {
+        'ID': '5001_WB',
+        'Description': 'Brayton Ave',
+        'Community': 'Fall River',
+        'County': 'Bristol',
+        'Info': 'Quequechan River Rail Trail, Crossing at Brayton Ave - MHD Owned, Miovision integration sIte: TMC Int 8024292',
+        'District': 5,
+        'Area Type': 'Urban',
+        'Functional Class': 'Minor Arterial',
+        'Qc Group': 'Basic QC',
+        'ReportLocationSetId': 5239,
+        'LocationSetId': 2764376,
+        },
+    '5001_EB': {
+        'ID': '5001_EB',
+        'Description': 'Brayton Ave',
+        'Community': 'Fall River',
+        'County': 'Bristol',
+        'Info': 'Quequechan River Rail Trail, Crossing at Brayton Ave - MHD Owned, Miovision integration sIte: TMC Int 8024292',
+        'District': 5,
+        'Area Type': 'Urban',
+        'Functional Class': 'Minor Arterial',
+        'Qc Group': 'Basic QC',
+        'ReportLocationSetId': 5240,
+        'LocationSetId': 2764378,
+        },
+    '5002_WB': {
+        'ID': '5002_WB',
+        'Description': 'Centre St',
+        'Community': 'Brockton',
+        'County': 'Plymouth',
+        'Info': 'MHD Owned: Eco Counter',
+        'District': 5,
+        'Area Type': 'Urban',
+        'Functional Class': 'Principal Arterial – Other',
+        'Qc Group': 'Basic QC',
+        'ReportLocationSetId': 5241,
+        'LocationSetId': 2764381,
+        },
+    '5002_EB': {
+        'ID': '5002_EB',
+        'Description': 'Centre St',
+        'Community': 'Brockton',
+        'County': 'Plymouth',
+        'Info': 'MHD Owned: Eco Counter',
+        'District': 5,
+        'Area Type': 'Urban',
+        'Functional Class': 'Principal Arterial – Other',
+        'Qc Group': 'Basic QC',
+        'ReportLocationSetId': 5242,
+        'LocationSetId': 2764385,
+        },
+    '6002_WB': {
+        'ID': '6002_WB',
+        'Description': 'Longfellow Bridge',
+        'Community': 'Cambridge',
+        'County': 'Suffolk',
+        'Info': '',
+        'District': 6,
+        'Area Type': 'Urban',
+        'Functional Class': 'Principal Arterial – Other',
+        'Qc Group': 'Basic QC',
+        'ReportLocationSetId': 5243,
+        'LocationSetId': 2764387,
+        },
+    '6002_EB': {
+        'ID': '6002_EB',
+        'Description': 'Longfellow Bridge',
+        'Community': 'Cambridge',
+        'County': 'Suffolk',
+        'Info': 'Longfellow Bridge MHD owned:CMU Device',
+        'District': 6,
+        'Area Type': 'Urban',
+        'Functional Class': 'Principal Arterial – Other',
+        'Qc Group': 'Basic QC',
+        'ReportLocationSetId': 5245,
+        'LocationSetId': 2764393,
+        },
+    '6003_EB': {
+        'ID': '6003_EB',
+        'Description': 'Charles River Dam Rd',
+        'Community': 'Boston',
+        'County': 'Suffolk',
+        'Info': 'MHD Owned: Eco Counter',
+        'District': 6,
+        'Area Type': 'Urban',
+        'Functional Class': '',
+        'Qc Group': 'Basic QC',
+        'ReportLocationSetId': 5246,
+        'LocationSetId': 2764396,
+        },
+    '6001_EB': {
+        'ID': '6001_EB',
+        'Description': 'Charles River Dam Rd',
+        'Community': 'Cambridge',
+        'County': 'Middlesex',
+        'Info': '',
+        'District': 6,
+        'Area Type': 'Urban',
+        'Functional Class': '',
+        'Qc Group': 'Basic QC',
+        'ReportLocationSetId': 5247,
+        'LocationSetId': 2764399,
+        },
+    '6001_WB': {
+        'ID': '6001_WB',
+        'Description': 'Charles River Dam Rd',
+        'Community': 'Cambridge',
+        'County': 'Middlesex',
+        'Info': '',
+        'District': 6,
+        'Area Type': 'Urban',
+        'Functional Class': '',
+        'Qc Group': 'Basic QC',
+        'ReportLocationSetId': 5248,
+        'LocationSetId': 2764401,
         },
     }
 
@@ -164,7 +386,8 @@ def save_iframe(iframe):
 def clean_iframe(iframe_content):
     dfs = pd.read_html(iframe_content.content)
 
-    date = dfs[8].iloc[5][1]
+    # do a qc status check (Accepted/Rejected)
+    date = dfs[9].iloc[5][1]
     stationID = dfs[9].iloc[1][1]
     dateStr = datetime.strptime(date, r'%m/%d/%Y').strftime(r'%Y%m%d')
 
@@ -181,7 +404,6 @@ def clean_iframe(iframe_content):
 
     # print(df.columns)
     # print(df[('Bike', 'NB')])
-    
 
     filename = f'data/{stationID}_{dateStr}'
     df.to_csv(filename + '.csv')
@@ -189,10 +411,11 @@ def clean_iframe(iframe_content):
 
 # %% Run as script
 if __name__ == "__main__":
+    station = stations['3001']
     startDay = datetime.now() - timedelta(days=1)
     endDay = datetime.now()
 
     ms2softSession = ms2soft_session()
-    downloadedDay = ms2soft_download_day(ms2softSession, startDay, endDay, stations[4001])
+    downloadedDay = ms2soft_download_day(ms2softSession, startDay, endDay, station)
     save_iframe(downloadedDay)
     clean_iframe(downloadedDay)
