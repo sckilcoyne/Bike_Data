@@ -1,11 +1,13 @@
 
 # %% Initialize
 import requests
-import json
+# import json
 from bs4 import BeautifulSoup
+from datetime import datetime, timedelta
+import pandas as pd
 
-# Reading data from a SQL-SERVER/Oracle database
-import pyodbc
+# pylint: disable=missing-function-docstring
+# pylint: disable=broad-except, invalid-name
 
 # %% Station IDs
 #4001 - Minuteman Commuter Bikeway, Lexington, Middlesex
@@ -30,78 +32,167 @@ import pyodbc
 #6001_EB - Charles River Dam Road, Cambridge, Middlesex
 #6001_WB - Charles River Dam Road, Cambridge, Middlesex
 
+stations = {
+    4001:{
+        'ID': 4001,
+        'Description': 'Minuteman Commuter Bikeway',
+        'Community': 'Lexington',
+        'County': 'Middlesex',
+        'Info': 'MHD owned: Q-Free Hi-Trac CMU',
+        'District': 4,
+        'Area Type': 'Urban',
+        'Functional Class': 'Trail or Shared Use Path',
+        'Qc Group': 'Basic QC',
+        'ReportLocationSetId': 5224,
+        'LocationSetId': 2763970,
+        },
+    3001: {
+        'Description': 'Bruce Freeman Rail Trail',
+        },
+    }
 
 # %% Call ms2soft
 
-session_url = 'https://mhd.ms2soft.com/tdms.ui/nmds/analysis?loc=mhd'
+def ms2soft_session():
+    session = requests.Session()
 
-url = r'http://sql-2/ReportServer?%2Ftdms.reports%2F%5BNMDS%5D%5BStation%5D%5BDetail%5DSingleDayByStation&amp;' + \
-    'Header=Massachusetts%20Highway%20Department&amp;' + \
-    r'TitleAndCriteria=Counts%20by%20Station&amp;' + \
-    'Footer=&amp;' + \
-    'AgencyId=96&amp;' + \
-    r'StartDate=01%2F01%2F2022%2000%3A00%3A00&amp;' + \
-    r'EndDate=12%2F31%2F2022%2000%3A00%3A00&amp;' + \
-    'LocationSetId=2757145&amp;' + \
-    'ReportLocationSetId=5212&amp;' + \
-    'rs%3AParameterLanguage=&amp;' + \
-    'rs%3ACommand=Render&amp;' + \
-    'rs%3AFormat=ATOM&amp;' + \
-    'rc%3AItemPath=Tablix6.Subreport1.Tablix3.Offset.Pathway.Mode.Direction'
+    # In Firefox developer tools, Network tab: For Get request, Right Click > Copy Value > Copy as cURl
+    # With still in clipboard, in python > uncurl (pip install uncurl)
+    r = session.get('https://mhd.ms2soft.com/tdms.ui/nmds/analysis/Index', #?loc=mhd&LocationId=4001',
+        headers={
+            'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8',
+            'Accept-Encoding': 'gzip, deflate, br',
+            'Accept-Language': 'en-US,en;q=0.5',
+            'Connection': 'keep-alive',
+            'DNT': '1',
+            'Sec-Fetch-Dest': 'document',
+            'Sec-Fetch-Mode': 'navigate',
+            'Sec-Fetch-Site': 'none',
+            'Sec-Fetch-User': '?1',
+            'Upgrade-Insecure-Requests': '1',
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:104.0) Gecko/20100101 Firefox/104.0'
+        },
+        cookies={},
+        auth=(),
+    )
 
-    # ReportLocationSetId appears to be a counter saved in their database
+    # print(f'{r.status_code=}')
+    if r.status_code == 200:
+        pass
+    else:
+        raise Exception(f'Session Connection Error: Status Code {r.status_code}')
 
-# <div class="viewer" id="ReportViewer">
-# 		<iframe Height="1024" Width="1280" class="report-finished" 
-            # src="/TDMS.UI/MvcReportViewer.aspx?
-            # _id=d8eaf35b-563e-49c6-949c-00eff764315a&amp;
-            # _m=Remote&amp;
-            # _r=%2ftdms.reports%2f%5bNMDS%5d%5bStation%5d%5bDetail%5dSingleDayByStation&amp;
-            # _13=False&amp;
-            # _39=1004px&amp;
-            # AgencyId=96&amp;
-            # StartDate=01%2f01%2f2022+00%3a00%3a00&amp;
-            # EndDate=12%2f31%2f2022+00%3a00%3a00&amp;
-            # ReportLocationSetId=5219&amp;
-            # LocationSetId=2759128&amp;
-            # Header=Massachusetts+Highway+Department&amp;
-            # TitleAndCriteria=Counts+by+Station&amp;
-            # Footer=" style="border: none">
-            # </iframe>
-# </div>
+    return session
 
-url2 = r'https://mhd.ms2soft.com//TDMS.UI/MvcReportViewer.aspx?_id=d8eaf35b-563e-49c6-949c-00eff764315a&amp;_m=Remote&amp;_r=%2ftdms.reports%2f%5bNMDS%5d%5bStation%5d%5bDetail%5dSingleDayByStation&amp;_13=False&amp;_39=1004px&amp;AgencyId=96&amp;StartDate=01%2f01%2f2022+00%3a00%3a00&amp;EndDate=12%2f31%2f2022+00%3a00%3a00&amp;ReportLocationSetId=5219&amp;LocationSetId=2759128&amp;Header=Massachusetts+Highway+Department&amp;TitleAndCriteria=Counts+by+Station&amp;Footer='
+def ms2soft_download_day(session, start, end, station):
+    # Create report generation url
+    slash = r'%2F'
 
-# conn = pyodbc.connect()
+    urlBase = 'https://mhd.ms2soft.com/tdms.ui/nmds/analysis/GetReportViewer?loc=mhd&'
+    dateStart = f'StartDate={start.month}{slash}{start.day}{slash}{start.year}&'
+    dateEnd = f'EndDate={end.month}{slash}{end.day}{slash}{end.year}&'
+    reportType = 'SelectedReport=%5BNMDS%5D%5BStation%5D%5BDetail%5DSingleDayByStation&'
+    reportLocationSetId = f'''ReportLocationSetId={station['ReportLocationSetId']}&'''
+    LocationSetId = f'''LocationSetId={station['LocationSetId']}'''
 
-session = requests.Session()
+    # Run report
+    urlRunReport = urlBase + dateStart + dateEnd + reportType + \
+                   reportLocationSetId + LocationSetId
+    report = session.get(urlRunReport,
+        headers={
+            'Accept': '*/*',
+            'Accept-Encoding': 'gzip, deflate, br',
+            'Accept-Language': 'en-US,en;q=0.5',
+            'Connection': 'keep-alive',
+            'DNT': '1',
+            'Referer': f'''https://mhd.ms2soft.com/tdms.ui/nmds/analysis/Index?loc=mhd&LocationId={station['ID']}''',
+            'Sec-Fetch-Dest': 'empty',
+            'Sec-Fetch-Mode': 'cors',
+            'Sec-Fetch-Site': 'same-origin',
+            'TE': 'trailers',
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:104.0) Gecko/20100101 Firefox/104.0',
+            'X-Requested-With': 'XMLHttpRequest'
+        },
+        cookies={
+            'MS2Session_TDMS.UI': 'sesdhyfytvz5u4ilkvxdlxeo',
+            'MapPanel.settings': '{showOnlySearchResults:false,ArcGISLayerCheckedState:true}'
+        },
+        auth=(),
+    )
 
-session_response = session.get(session_url)
-session_response.raise_for_status()
+    # print(f'{report.status_code=}')
+    if report.status_code == 200:
+        pass
+    else:
+        raise Exception(f'Report Generation Connection Error: Status Code {report.status_code}')
 
-raw = session.get(url2)
+    # Open report iframe
+    soup = BeautifulSoup(report.text, 'html.parser')
+    # print(soup)
+    # print(soup.find('iframe')['src'])
+    iframe_content = session.get('https://mhd.ms2soft.com' + soup.find('iframe')['src'], timeout=30) 
+    # slow website, needed to add delay
 
-print(raw.content)
-soup = BeautifulSoup(raw.content, "html.parser")
+    return iframe_content
 
-data = json.loads(raw.text)
+def save_iframe(iframe):
+    """_summary_
 
+    Args:
+        iframe (_type_): _description_
+    """
+    iframesoup = BeautifulSoup(iframe.content, 'html.parser')
+    iframesouppretty = iframesoup.prettify()
+    # print(iframesoup.prettify())
 
-print(data)
+    dfsave = pd.read_html(iframe.content)
 
+    stationID = dfsave[9].iloc[1][1]
+    date = dfsave[9].iloc[5][1]
+    dateStr = datetime.strptime(date, r'%m/%d/%Y').strftime(r'%Y%m%d')
 
+    # pylint: disable=consider-using-enumerate
+    with open(f'testing/iframe_{stationID}_{dateStr}.txt','w', encoding='UTF-8') as out:
+        for i in range(0, len(iframesouppretty)):
+            try:
+                out.write(iframesouppretty[i])
+            except Exception:
+                print('Error printing iframe to file')
+    # pylint: enable=consider-using-enumerate
 
+# %% Data Cleaning
+def clean_iframe(iframe_content):
+    dfs = pd.read_html(iframe_content.content)
 
+    date = dfs[8].iloc[5][1]
+    stationID = dfs[9].iloc[1][1]
+    dateStr = datetime.strptime(date, r'%m/%d/%Y').strftime(r'%Y%m%d')
 
-csv = 'https://mhd.ms2soft.com/TDMS.UI/Reserved.ReportViewerWebControl.axd?' + \
-    'ReportSession=4vrzh12tkni1nkbzffvmuq55' + '&' + \
-    'Culture=1033' + '&' + \
-    'CultureOverrides=True' + '&' + \
-    'UICulture=1033' + '&' + \
-    'UICultureOverrides=True' + '&' + \
-    'ReportStack=1' + '&' + \
-    'ControlID=b7993fc1d005469dbd15c9bc2e758f6b' + '&' + \
-    r'RSProxy=http%3a%2f%2fsql-2%2fReportServer' + '&' + \
-    'OpType=Export' + '&' + \
-    r'FileName=%5bNMDS%5d%5bStation%5d%5bDetail%5dSingleDayByStation' + '&' + \
-    'ContentDisposition=OnlyHtmlInline&Format=CSV'
+    df = dfs[11]
+    filename = f'testing/{stationID}_{dateStr}'
+    df.to_pickle(filename + '.pkl', protocol=3)
+
+    cols = [0,1,3,7,10,13,17,21] # Drop useless columns
+    df.drop(df.columns[cols], axis=1, inplace=True)
+    df.columns = [df.iloc[3], df.iloc[4]]  # Set header
+    df = df.iloc[5:] # Drop top rows
+    df = df.iloc[:-2]  # Drop subtotal rows
+    df['Date'] = date
+
+    # print(df.columns)
+    # print(df[('Bike', 'NB')])
+    
+
+    filename = f'data/{stationID}_{dateStr}'
+    df.to_csv(filename + '.csv')
+    df.to_pickle(filename + '.pkl', protocol=3)
+
+# %% Run as script
+if __name__ == "__main__":
+    startDay = datetime.now() - timedelta(days=1)
+    endDay = datetime.now()
+
+    ms2softSession = ms2soft_session()
+    downloadedDay = ms2soft_download_day(ms2softSession, startDay, endDay, stations[4001])
+    save_iframe(downloadedDay)
+    clean_iframe(downloadedDay)
