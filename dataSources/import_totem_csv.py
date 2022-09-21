@@ -56,7 +56,7 @@ def load_dataset(totemdataset):
 
     Returns:
         _type_: _description_
-    """    
+    """
     history = pd.read_csv(totemdataset)
 
     # Clean up data
@@ -170,6 +170,7 @@ def main():
 
     dailyTotals, records = create_records(history)
 
+    history.to_pickle(dataFolder + '/broadway_complete.pkl', protocol=3)
     dailyTotals.to_pickle(dataFolder + '/broadway_daily_totals.pkl', protocol=3)
     utils.pickle_dict(records, 'broadway_records')
 
