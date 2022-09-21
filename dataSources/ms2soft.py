@@ -2,6 +2,7 @@
 # %% Initialize
 import requests
 # import json
+import pickle
 from bs4 import BeautifulSoup
 from datetime import datetime, timedelta
 import pandas as pd
@@ -306,7 +307,7 @@ def ms2soft_session():
 
     return session
 
-def ms2soft_download_day(session, start, end, station):
+def ms2soft_download_day(session, start, end, stationInfo):
     # Create report generation url
     slash = r'%2F'
 
@@ -314,8 +315,8 @@ def ms2soft_download_day(session, start, end, station):
     dateStart = f'StartDate={start.month}{slash}{start.day}{slash}{start.year}&'
     dateEnd = f'EndDate={end.month}{slash}{end.day}{slash}{end.year}&'
     reportType = 'SelectedReport=%5BNMDS%5D%5BStation%5D%5BDetail%5DSingleDayByStation&'
-    reportLocationSetId = f'''ReportLocationSetId={station['ReportLocationSetId']}&'''
-    LocationSetId = f'''LocationSetId={station['LocationSetId']}'''
+    reportLocationSetId = f'''ReportLocationSetId={stationInfo['ReportLocationSetId']}&'''
+    LocationSetId = f'''LocationSetId={stationInfo['LocationSetId']}'''
 
     # Run report
     urlRunReport = urlBase + dateStart + dateEnd + reportType + \
@@ -327,7 +328,7 @@ def ms2soft_download_day(session, start, end, station):
             'Accept-Language': 'en-US,en;q=0.5',
             'Connection': 'keep-alive',
             'DNT': '1',
-            'Referer': f'''https://mhd.ms2soft.com/tdms.ui/nmds/analysis/Index?loc=mhd&LocationId={station['ID']}''',
+            'Referer': f'''https://mhd.ms2soft.com/tdms.ui/nmds/analysis/Index?loc=mhd&LocationId={stationInfo['ID']}''',
             'Sec-Fetch-Dest': 'empty',
             'Sec-Fetch-Mode': 'cors',
             'Sec-Fetch-Site': 'same-origin',
@@ -352,7 +353,7 @@ def ms2soft_download_day(session, start, end, station):
     soup = BeautifulSoup(report.text, 'html.parser')
     # print(soup)
     # print(soup.find('iframe')['src'])
-    iframe_content = session.get('https://mhd.ms2soft.com' + soup.find('iframe')['src'], timeout=30) 
+    iframe_content = session.get('https://mhd.ms2soft.com' + soup.find('iframe')['src'], timeout=30)
     # slow website, needed to add delay
 
     return iframe_content
@@ -368,6 +369,10 @@ def save_iframe(iframe):
     # print(iframesoup.prettify())
 
     dfsave = pd.read_html(iframe.content)
+
+    with open('testing/iframe_content.pkl', 'wb') as f:
+        pickle.dump(dfsave, f)
+
 
     stationID = dfsave[9].iloc[1][1]
     date = dfsave[9].iloc[5][1]
@@ -411,7 +416,7 @@ def clean_iframe(iframe_content):
 
 # %% Run as script
 if __name__ == "__main__":
-    station = stations['3001']
+    station = stations['4004_NB']
     startDay = datetime.now() - timedelta(days=1)
     endDay = datetime.now()
 

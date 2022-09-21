@@ -4,3 +4,4 @@ data/
 testing/
 .vscode/
 *.pyc
+.spyproject*
