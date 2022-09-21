@@ -1,5 +1,7 @@
 # Ignore directories
 secrets/
 data/
+testing/
 .vscode/
 *.pyc
+.spyproject*
