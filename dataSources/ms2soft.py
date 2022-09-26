@@ -4,275 +4,19 @@ import requests
 # import json
 import pickle
 from bs4 import BeautifulSoup
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, date
 import pandas as pd
+import numpy as np
+
+# pylint: disable=import-error
+import ms2soft_stations
+stations_info = ms2soft_stations.stations
+# pylint: enable=import-error
 
 # pylint: disable=missing-function-docstring
 # pylint: disable=broad-except, invalid-name
 
-# %% Station IDs
-stations = {
-    '4001':{
-        'ID': '4001',
-        'Description': 'Minuteman Commuter Bikeway',
-        'Community': 'Lexington',
-        'County': 'Middlesex',
-        'Info': 'MHD owned: Q-Free Hi-Trac CMU',
-        'District': 4,
-        'Area Type': 'Urban',
-        'Functional Class': 'Trail or Shared Use Path',
-        'Qc Group': 'Basic QC',
-        'ReportLocationSetId': 5224,
-        'LocationSetId': 2763970,
-        },
-    '3001': {
-        'ID': '3001',
-        'Description': 'Bruce Freeman Rail Trail',
-        'Community': 'Acton',
-        'County': 'Middlesex',
-        'Info': 'MHD Owned: CMU Device',
-        'District': 3,
-        'Area Type': 'Rural',
-        'Functional Class': 'Trail or Shared Use Path',
-        'Qc Group': 'Basic QC',
-        'ReportLocationSetId': 5228,
-        'LocationSetId': 2764341,
-        },
-    '4004_SB': {
-        'ID': '4004_SB',
-        'Description': 'Fellwsay (Route 28)',
-        'Community': 'Medford',
-        'County': 'Middlesex',
-        'Info': 'MHD owned: Q-Free Hi-Trac CMU',
-        'District': 4,
-        'Area Type': 'Urban',
-        'Functional Class': 'Principal Arterial – Other',
-        'Qc Group': 'Basic QC',
-        'ReportLocationSetId': 5230,
-        'LocationSetId': 2764347,
-        },
-    '4004_NB': {
-        'ID': '4004_NB',
-        'Description': 'Fellwsay (Route 28)',
-        'Community': 'Medford',
-        'County': 'Middlesex',
-        'Info': 'MHD owned: Q-Free Hi-Trac CMU',
-        'District': 4,
-        'Area Type': 'Urban',
-        'Functional Class': 'Principal Arterial – Other',
-        'Qc Group': 'Basic QC',
-        'ReportLocationSetId': 5231,
-        'LocationSetId': 2764350,
-        },
-    '4003_SB': {
-        'ID': '4003_SB',
-        'Description': 'Bridge Street',
-        'Community': 'Lowell',
-        'County': 'Middlesex',
-        'Info': 'MHD owned: Miovision Data',
-        'District': 4,
-        'Area Type': 'Urban',
-        'Functional Class': 'Principal Arterial – Other',
-        'Qc Group': 'Default Group',
-        'ReportLocationSetId': 5232,
-        'LocationSetId': 2764353,
-        },
-    '4003_NB': {
-        'ID': '4003_NB',
-        'Description': 'Bridge Street',
-        'Community': 'Lowell',
-        'County': 'Middlesex',
-        'Info': 'MHD owned: Miovision Data',
-        'District': 4,
-        'Area Type': 'Urban',
-        'Functional Class': 'Principal Arterial – Other',
-        'Qc Group': 'Default Group',
-        'ReportLocationSetId': 5233,
-        'LocationSetId': 2764356,
-        },
-    '4003_WB': {
-        'ID': '4003_NB',
-        'Description': 'Veterans of Foreign Wars Highway',
-        'Community': 'Lowell',
-        'County': 'Middlesex',
-        'Info': 'MHD owned: Miovision Data',
-        'District': 4,
-        'Area Type': 'Urban',
-        'Functional Class': 'Principal Arterial – Other',
-        'Qc Group': 'Default Group',
-        'ReportLocationSetId': 5234,
-        'LocationSetId': 2764359,
-        },
-    '4003_EB': {
-        'ID': '4003_EB',
-        'Description': 'Veterans of Foreign Wars Highway',
-        'Community': 'Lowell',
-        'County': 'Middlesex',
-        'Info': 'MHD owned: Miovision Data',
-        'District': 4,
-        'Area Type': 'Urban',
-        'Functional Class': 'Principal Arterial – Other',
-        'Qc Group': 'Default Group',
-        'ReportLocationSetId': 5235,
-        'LocationSetId': 2764362,
-        },
-    '4002_NB': {
-        'ID': '4002_NB',
-        'Description': 'Sgt James Ayube Memorial Drive',
-        'Community': 'Salem',
-        'County': 'Essex',
-        'Info': 'MHD owned: Eco Counter',
-        'District': 4,
-        'Area Type': 'Urban',
-        'Functional Class': 'Principal Arterial – Other',
-        'Qc Group': 'Basic QC',
-        'ReportLocationSetId': 5236,
-        'LocationSetId': 2764364,
-        },
-    '4002_SB': {
-        'ID': '4002_SB',
-        'Description': 'Sgt James Ayube Memorial Drive',
-        'Community': 'Salem',
-        'County': 'Essex',
-        'Info': 'MHD owned: Eco Counter',
-        'District': 4,
-        'Area Type': 'Urban',
-        'Functional Class': 'Principal Arterial – Other',
-        'Qc Group': 'Basic QC',
-        'ReportLocationSetId': 5237,
-        'LocationSetId': 2764366,
-        },
-    '5001_SB': {
-        'ID': '5001_SB',
-        'Description': 'Brayton Ave',
-        'Community': 'Fall River',
-        'County': 'Bristol',
-        'Info': 'Crosswalk Ped Counts - MHD Owned Miovision Data',
-        'District': 5,
-        'Area Type': 'Urban',
-        'Functional Class': '',
-        'Qc Group': 'Basic QC',
-        'ReportLocationSetId': 5238,
-        'LocationSetId': 2764372,
-        },
-    '5001_WB': {
-        'ID': '5001_WB',
-        'Description': 'Brayton Ave',
-        'Community': 'Fall River',
-        'County': 'Bristol',
-        'Info': 'Quequechan River Rail Trail, Crossing at Brayton Ave - MHD Owned, Miovision integration sIte: TMC Int 8024292',
-        'District': 5,
-        'Area Type': 'Urban',
-        'Functional Class': 'Minor Arterial',
-        'Qc Group': 'Basic QC',
-        'ReportLocationSetId': 5239,
-        'LocationSetId': 2764376,
-        },
-    '5001_EB': {
-        'ID': '5001_EB',
-        'Description': 'Brayton Ave',
-        'Community': 'Fall River',
-        'County': 'Bristol',
-        'Info': 'Quequechan River Rail Trail, Crossing at Brayton Ave - MHD Owned, Miovision integration sIte: TMC Int 8024292',
-        'District': 5,
-        'Area Type': 'Urban',
-        'Functional Class': 'Minor Arterial',
-        'Qc Group': 'Basic QC',
-        'ReportLocationSetId': 5240,
-        'LocationSetId': 2764378,
-        },
-    '5002_WB': {
-        'ID': '5002_WB',
-        'Description': 'Centre St',
-        'Community': 'Brockton',
-        'County': 'Plymouth',
-        'Info': 'MHD Owned: Eco Counter',
-        'District': 5,
-        'Area Type': 'Urban',
-        'Functional Class': 'Principal Arterial – Other',
-        'Qc Group': 'Basic QC',
-        'ReportLocationSetId': 5241,
-        'LocationSetId': 2764381,
-        },
-    '5002_EB': {
-        'ID': '5002_EB',
-        'Description': 'Centre St',
-        'Community': 'Brockton',
-        'County': 'Plymouth',
-        'Info': 'MHD Owned: Eco Counter',
-        'District': 5,
-        'Area Type': 'Urban',
-        'Functional Class': 'Principal Arterial – Other',
-        'Qc Group': 'Basic QC',
-        'ReportLocationSetId': 5242,
-        'LocationSetId': 2764385,
-        },
-    '6002_WB': {
-        'ID': '6002_WB',
-        'Description': 'Longfellow Bridge',
-        'Community': 'Cambridge',
-        'County': 'Suffolk',
-        'Info': '',
-        'District': 6,
-        'Area Type': 'Urban',
-        'Functional Class': 'Principal Arterial – Other',
-        'Qc Group': 'Basic QC',
-        'ReportLocationSetId': 5243,
-        'LocationSetId': 2764387,
-        },
-    '6002_EB': {
-        'ID': '6002_EB',
-        'Description': 'Longfellow Bridge',
-        'Community': 'Cambridge',
-        'County': 'Suffolk',
-        'Info': 'Longfellow Bridge MHD owned:CMU Device',
-        'District': 6,
-        'Area Type': 'Urban',
-        'Functional Class': 'Principal Arterial – Other',
-        'Qc Group': 'Basic QC',
-        'ReportLocationSetId': 5245,
-        'LocationSetId': 2764393,
-        },
-    '6003_EB': {
-        'ID': '6003_EB',
-        'Description': 'Charles River Dam Rd',
-        'Community': 'Boston',
-        'County': 'Suffolk',
-        'Info': 'MHD Owned: Eco Counter',
-        'District': 6,
-        'Area Type': 'Urban',
-        'Functional Class': '',
-        'Qc Group': 'Basic QC',
-        'ReportLocationSetId': 5246,
-        'LocationSetId': 2764396,
-        },
-    '6001_EB': {
-        'ID': '6001_EB',
-        'Description': 'Charles River Dam Rd',
-        'Community': 'Cambridge',
-        'County': 'Middlesex',
-        'Info': '',
-        'District': 6,
-        'Area Type': 'Urban',
-        'Functional Class': '',
-        'Qc Group': 'Basic QC',
-        'ReportLocationSetId': 5247,
-        'LocationSetId': 2764399,
-        },
-    '6001_WB': {
-        'ID': '6001_WB',
-        'Description': 'Charles River Dam Rd',
-        'Community': 'Cambridge',
-        'County': 'Middlesex',
-        'Info': '',
-        'District': 6,
-        'Area Type': 'Urban',
-        'Functional Class': '',
-        'Qc Group': 'Basic QC',
-        'ReportLocationSetId': 5248,
-        'LocationSetId': 2764401,
-        },
-    }
+
 
 # %% Call ms2soft
 
@@ -307,7 +51,11 @@ def ms2soft_session():
 
     return session
 
-def ms2soft_download_day(session, start, end, stationInfo):
+def ms2soft_download_day(session, start, stationID):
+    end = start + timedelta(days=1)
+
+    stationInfo = stations_info[stationID]
+
     # Create report generation url
     slash = r'%2F'
 
@@ -358,7 +106,7 @@ def ms2soft_download_day(session, start, end, stationInfo):
 
     return iframe_content
 
-def save_iframe(iframe):
+def save_iframe(iframe, stationInfo):
     """_summary_
 
     Args:
@@ -374,9 +122,13 @@ def save_iframe(iframe):
         pickle.dump(dfsave, f)
 
 
-    stationID = dfsave[9].iloc[1][1]
-    date = dfsave[9].iloc[5][1]
-    dateStr = datetime.strptime(date, r'%m/%d/%Y').strftime(r'%Y%m%d')
+    # stationID = dfsave[9].iloc[1][1]
+    # date = dfsave[9].iloc[5][1]
+    # dateStr = datetime.strptime(date, r'%m/%d/%Y').strftime(r'%Y%m%d')
+
+    stationID = stationInfo[0]
+    date = stationInfo[1]
+    dateStr = date.strftime(r'%Y%m%d')
 
     # pylint: disable=consider-using-enumerate
     with open(f'testing/iframe_{stationID}_{dateStr}.txt','w', encoding='UTF-8') as out:
@@ -388,39 +140,117 @@ def save_iframe(iframe):
     # pylint: enable=consider-using-enumerate
 
 # %% Data Cleaning
-def clean_iframe(iframe_content):
+def clean_iframe(iframe_content, stationInfo):
     dfs = pd.read_html(iframe_content.content)
 
-    # do a qc status check (Accepted/Rejected)
-    date = dfs[9].iloc[5][1]
-    stationID = dfs[9].iloc[1][1]
-    dateStr = datetime.strptime(date, r'%m/%d/%Y').strftime(r'%Y%m%d')
+    # Find correct tables from iframe content based on lengths
+    dfLens = [x.shape[0] for x in dfs]
+    # Table with metadata
+    try:
+        dfInfo = dfs[dfLens.index(8)]
+    except:
+        if __name__ == '__main__':
+            save_iframe(iframe_content, stationInfo)
+        raise Exception('Unable to find metadata table') from None
+    # Table with data
+    try:
+        dfData = dfs[dfLens.index(31)]
+    except:
+        if __name__ == '__main__':
+            save_iframe(iframe_content, stationInfo)
+        raise Exception('Unable to find data table') from None
 
-    df = dfs[11]
-    filename = f'testing/{stationID}_{dateStr}'
-    df.to_pickle(filename + '.pkl', protocol=3)
+    # Get station ID from metadata table
+    stationID = np.where(dfInfo.to_numpy() == 'Location Id:')
+    stationID = dfInfo.loc[stationID[0][0], stationID[1][0] + 1]
 
-    cols = [0,1,3,7,10,13,17,21] # Drop useless columns
-    df.drop(df.columns[cols], axis=1, inplace=True)
-    df.columns = [df.iloc[3], df.iloc[4]]  # Set header
-    df = df.iloc[5:] # Drop top rows
-    df = df.iloc[:-2]  # Drop subtotal rows
-    df['Date'] = date
+    # Get date from metadata table
+    countDate = np.where(dfInfo.to_numpy() == 'Count Date')
+    countDate = dfInfo.loc[countDate[0][0], countDate[1][0] + 1]
+    dateStr = datetime.strptime(countDate, r'%m/%d/%Y').strftime(r'%Y%m%d')
+
+    # Check that data passed QC, according to metadata table
+    qc_status = np.where(dfInfo.to_numpy() == 'Qc Status:')
+    qc_status = dfInfo.loc[qc_status[0][0], qc_status[1][0] + 1]
+    if qc_status == 'Accepted':
+        print(f'QC passed on {dateStr}')
+    else:
+        raise Exception(f'Failed QC on {dateStr}') from None
+
+    # Save data table before cleaning
+    # if __name__ == '__main__':
+    #     filename = f'testing/{stationID}_{dateStr}'
+    #     dfData.to_pickle(filename + '.pkl', protocol=3)
+
+    # Drop useless columns (spacing columns on web page)
+    dfData.dropna(axis=1, how='all', inplace=True)
+
+    # Set header
+    dfData.columns = [dfData.iloc[3], dfData.iloc[4]]
+    dfData.columns.names = ['Type', 'Direction']
+
+    # Remove extra rows
+    dfData = dfData.iloc[5:] # Drop top rows
+    dfData = dfData.iloc[:-2]  # Drop subtotal rows
+
+    # Set Index
+    dfData['Date'] = countDate
+    dfData.index = [dfData.iloc[:,-1], dfData.iloc[:,0]]
+    dfData.index.names = ['Date', 'Hour']
 
     # print(df.columns)
     # print(df[('Bike', 'NB')])
 
-    filename = f'data/{stationID}_{dateStr}'
-    df.to_csv(filename + '.csv')
-    df.to_pickle(filename + '.pkl', protocol=3)
+    # filename = f'data/{stationID}_{dateStr}'
+    # dfData.to_csv(filename + '.csv')
+    # dfData.to_pickle(filename + '.pkl', protocol=3)
+
+    return dfData
+
+def download_all_data(session, stations):
+    # stationDfs = []
+
+    for station in stations:
+        stationID = station[0]
+        startDate = station[1]
+
+        print(f'Start downloading {stationID}')
+
+        stationDf = pd.DataFrame()
+        while (startDate <= date.today()):
+            try:
+                downloadedDay = ms2soft_download_day(session, startDate, stationID)
+                # save_iframe(downloadedDay)
+                newdf = clean_iframe(downloadedDay, station)
+                stationDf = pd.concat([stationDf, newdf])
+                print()
+            except Exception as e:
+                print(f'{startDate}: {e}')
+            finally:
+                startDate += timedelta(days=1)
+        # stationDfs.append(stationDf)
+        stationDf.to_pickle(f'data/{stationID}.pkl', protocol=3)
+    print('Completed downloaded all data')
+    # return stationDfs
 
 # %% Run as script
 if __name__ == "__main__":
-    station = stations['4004_NB']
-    startDay = datetime.now() - timedelta(days=1)
-    endDay = datetime.now()
+    Jan2020 = date(2020, 1, 1)
+    Jan2021 = date(2021, 1, 1)
+
+    stationList = [
+        # Lex Minuteman
+        # ['4001', date(2020, 1, 1)], \
+        # Medford Fellsway
+        ['4004_SB', date(2021, 7, 1)], \
+        # ['4004_NB', date(2021, 7, 1)], \
+        # Cambridge Charles River Dam
+        # ['6003_EB', date(2021, 7, 1)],\
+        ]
+
+    # station = stations[stationList[0]]
+    # startDay = datetime.now() - timedelta(days=1)
 
     ms2softSession = ms2soft_session()
-    downloadedDay = ms2soft_download_day(ms2softSession, startDay, endDay, station)
-    save_iframe(downloadedDay)
-    clean_iframe(downloadedDay)
+
+    download_all_data(ms2softSession, stationList)
