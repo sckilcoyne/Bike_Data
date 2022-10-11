@@ -250,10 +250,10 @@ def clean_iframe(iframe_content, stationInfo, scrapeLog):
     # if __name__ == '__main__':
     #     filename = f'testing/{stationID}_{dateStr}'
     #     dfData.to_pickle(filename + '.pkl', protocol=3)
-   
-    # Set header
-    dfData.columns = [dfData.iloc[3], dfData.iloc[4]]
-    dfData.columns.names = ['Type', 'Direction']
+
+    # Set header (3 levels of multi-index, only 2 causes problems of dupe indicies)
+    dfData.columns = [dfData.iloc[2], dfData.iloc[3], dfData.iloc[4]]
+    dfData.columns.names = ['Location', 'Type', 'Direction']
 
     # Remove extra rows
     dfData = dfData.iloc[5:] # Drop top rows
@@ -280,8 +280,24 @@ def clean_iframe(iframe_content, stationInfo, scrapeLog):
 
     return dfData, scrapeLog
 
+def format_tweet(stationID, countData):
+    stationName = stations_info[stationID]['TweetName']
+
+    bikeCount = countData.xs('Bike', axis=1, level=1).xs('Total', axis=1, level=1)
+    bikeCount = bikeCount.astype(int).sum()
+    # totalCount = countData[('Total','Total')].astype(int).sum()
+
+    dateString = countData('Date', axis=1, level=1)[0]
+    dateString = pd.to_datetime(dateString, format=r'%m/%d/%Y')
+    dateString = dateString.strftime('%a %b %d')
+
+    tweet = f'{stationName}\n{bikeCount} riders on {dateString}'
+
+    return tweet
+
 def download_all_data(session, stationList):
     # Download data for each station from the given start date to present
+    tweetList = []
 
     # Station list: array of form [SationID, FirstScrapeDate]
     for station in stationList:
@@ -309,6 +325,13 @@ def download_all_data(session, stationList):
                     scrapeLog[-1] = f'{scrapeLog[-1]}{pipe}Date Added to Data'
 
                     logger.debug('%s appended to dataframe', scrapeDate)
+
+                    try:
+                        newTweet = format_tweet(stationID, newData)
+                        tweetList.append(newTweet)
+                    except Exception as e:
+                        logger.info('Failed to make tweet: %s', e)
+
                 except Exception as e:
                     # Update log note ['ScrapeTime', 'DateReqest', 'DateScraped', 'StatusCode', 'QC', 'LogInfo']
                     scrapeLog[-1] = f'{scrapeLog[-1]}{pipe}{e}'
@@ -331,6 +354,7 @@ def download_all_data(session, stationList):
             stationDataLog.to_csv(f'testing/{stationID}-log.csv')
 
     logger.info('Completed downloaded all data')
+    return tweetList
 
 # %% Run as script
 def main(): # Prevents accidental globals
@@ -338,18 +362,18 @@ def main(): # Prevents accidental globals
     # Station list: array of form [SationID, FirstScrapeDate]
     stationList = [
         # Lex Minuteman
-        # ['4001', date(2020, 1, 1)], \
-        ['4001', date(2022, 9, 1)], \
+        ['4001', date(2020, 8, 15)], \
+        # ['4001', date(2022, 9, 1)], \
         # Medford Fellsway
-        # ['4004_SB', date(2022, 9, 1)], \
-        # ['4004_NB', date(2021, 7, 1)], \
-        # Cambridge Charles River Dam
-        # ['6003_EB', date(2021, 7, 1)],\
+        ['4004_SB', date(2021, 7, 14)], \
+        ['4004_NB', date(2021, 7, 13)], \
         ]
 
     session = ms2soft_session()
 
-    download_all_data(session, stationList)
+    tweetList = download_all_data(session, stationList)
+
+    return tweetList
 
 if __name__ == "__main__":
     # pylint: disable=ungrouped-imports
@@ -360,4 +384,4 @@ if __name__ == "__main__":
     logger.debug("Logging is configured.")
 
     # Run scraping
-    main()
+    _ = main()

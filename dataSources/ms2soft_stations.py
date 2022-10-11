@@ -18,6 +18,7 @@ stations = {
         },
     '4001':{ # Lex Minuteman, 2020
         'ID': '4001',
+        'TweetName': 'Minuteman Bikeway (Lexington)',
         'Description': 'Minuteman Commuter Bikeway',
         'Community': 'Lexington',
         'County': 'Middlesex',
@@ -110,6 +111,7 @@ stations = {
         },
     '4004_SB': { # Medford Fellsway, 2021
         'ID': '4004_SB',
+        'TweetName': 'Fellwsay Rt28 SB over Mystic River',
         'Description': 'Fellwsay (Route 28)',
         'Community': 'Medford',
         'County': 'Middlesex',
@@ -124,6 +126,7 @@ stations = {
         },
     '4004_NB': { # Medford Fellsway, 2021
         'ID': '4004_NB',
+        'TweetName': 'Fellwsay Rt28 NB over Mystic River',
         'Description': 'Fellwsay (Route 28)',
         'Community': 'Medford',
         'County': 'Middlesex',
@@ -132,8 +135,9 @@ stations = {
         'Area Type': 'Urban',
         'Functional Class': 'Principal Arterial – Other',
         'Qc Group': 'Basic QC',
-        'ReportLocationSetId': 5231,
-        'LocationSetId': 2764350,
+        '_id': 'c1eecb32-0ac8-4779-8ceb-f54bdfb3dd23',
+        'ReportLocationSetId': 5377,
+        'LocationSetId': 2806069,
         },
     '4005': { # Arlington Minuteman, n/a
         'ID': '4005',
