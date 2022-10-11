@@ -1,10 +1,15 @@
 
 # %% Initialize
-import requests
+# from tracemalloc import start
 # import json
 import pickle
-from bs4 import BeautifulSoup
+import os
+import sys
+import logging
 from datetime import datetime, timedelta, date
+
+from bs4 import BeautifulSoup
+import requests
 import pandas as pd
 import numpy as np
 
@@ -16,16 +21,30 @@ stations_info = ms2soft_stations.stations
 # pylint: disable=missing-function-docstring
 # pylint: disable=broad-except, invalid-name
 
+# ?Add project folder to be able to import custom modules?
+sys.path.insert(0,os.getcwd())
 
+# Import custom modules
+# pylint: disable=import-error, wrong-import-position
+import utils.utilFuncs as utils
+# pylint:enable=import-error, wrong-import-position
+
+# Set up logging
+# https://stackoverflow.com/questions/15727420/using-logging-in-multiple-modules
+logger = logging.getLogger(__name__)
+
+slash = r'%2F'
+pipe = ' | '
 
 # %% Call ms2soft
 
 def ms2soft_session():
     session = requests.Session()
 
-    # In Firefox developer tools, Network tab: For Get request, Right Click > Copy Value > Copy as cURl
+    # In Firefox developer tools, Network tab: For Get request, RMB > Copy Value > Copy as cURl
     # With still in clipboard, in python > uncurl (pip install uncurl)
-    r = session.get('https://mhd.ms2soft.com/tdms.ui/nmds/analysis/Index', #?loc=mhd&LocationId=4001',
+    r = session.get('https://mhd.ms2soft.com/tdms.ui/nmds/analysis/Index', 
+            #?loc=mhd&LocationId=4001',
         headers={
             'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8',
             'Accept-Encoding': 'gzip, deflate, br',
@@ -43,122 +62,167 @@ def ms2soft_session():
         auth=(),
     )
 
-    # print(f'{r.status_code=}')
+    logger.debug('Status code for ms2soft: %s', r.status_code)
     if r.status_code == 200:
-        pass
+        logger.info('%s: ms2soft session started', datetime.now())
+        return session
     else:
-        raise Exception(f'Session Connection Error: Status Code {r.status_code}')
+        raise Exception(f'{datetime.now()}: Session Connection Error: Status Code {r.status_code}')
 
-    return session
 
-def ms2soft_download_day(session, start, stationID):
-    end = start + timedelta(days=1)
+def ms2soft_download_day(session, startDate, stationId):
+    stationInfo = stations_info[stationId]
 
-    stationInfo = stations_info[stationID]
+    endDate = startDate + timedelta(days=1)
 
-    # Create report generation url
-    slash = r'%2F'
+    # Format query date for URL
+    # '01%2f01%2f2022+00%3a00%3a00'
+    startStr = f'{startDate.month}{slash}{startDate.day}{slash}{startDate.year}+00%3a00%3a00'
+    endStr = f'{endDate.month}{slash}{endDate.day}{slash}{endDate.year}+00%3a00%3a00'
 
-    urlBase = 'https://mhd.ms2soft.com/tdms.ui/nmds/analysis/GetReportViewer?loc=mhd&'
-    dateStart = f'StartDate={start.month}{slash}{start.day}{slash}{start.year}&'
-    dateEnd = f'EndDate={end.month}{slash}{end.day}{slash}{end.year}&'
-    reportType = 'SelectedReport=%5BNMDS%5D%5BStation%5D%5BDetail%5DSingleDayByStation&'
-    reportLocationSetId = f'''ReportLocationSetId={stationInfo['ReportLocationSetId']}&'''
-    LocationSetId = f'''LocationSetId={stationInfo['LocationSetId']}'''
+    # URL direct to iframe with table of hourly data
+    # Set browser.link.open_newwindow to 1 for ms2soft network monitoring, then generate report
+    # Copy cURL once report is loaded and uncurl to get _id, ReportLocationSetId, LocationSetId
+    URL = 'https://mhd.ms2soft.com/TDMS.UI/MvcReportViewer.aspx?' + \
+        f'_id={stationInfo["_id"]}&_m=Remote' +\
+        r'&_r=%2ftdms.reports%2f%5bNMDS%5d%5bStation%5d%5bDetail%5dSingleDayByStation' +\
+        '&_13=False&_39=1004px&AgencyId=96' +\
+        f'&StartDate={startStr}&EndDate={endStr}' +\
+        f'&ReportLocationSetId={stationInfo["ReportLocationSetId"]}' +\
+        f'&LocationSetId={stationInfo["LocationSetId"]}' +\
+        '&Header=Massachusetts+Highway+Department' +\
+        '&TitleAndCriteria=Counts+by+Station&Footer='
 
-    # Run report
-    urlRunReport = urlBase + dateStart + dateEnd + reportType + \
-                   reportLocationSetId + LocationSetId
-    report = session.get(urlRunReport,
-        headers={
-            'Accept': '*/*',
-            'Accept-Encoding': 'gzip, deflate, br',
-            'Accept-Language': 'en-US,en;q=0.5',
-            'Connection': 'keep-alive',
-            'DNT': '1',
-            'Referer': f'''https://mhd.ms2soft.com/tdms.ui/nmds/analysis/Index?loc=mhd&LocationId={stationInfo['ID']}''',
-            'Sec-Fetch-Dest': 'empty',
-            'Sec-Fetch-Mode': 'cors',
-            'Sec-Fetch-Site': 'same-origin',
-            'TE': 'trailers',
-            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:104.0) Gecko/20100101 Firefox/104.0',
-            'X-Requested-With': 'XMLHttpRequest'
-        },
-        cookies={
-            'MS2Session_TDMS.UI': 'sesdhyfytvz5u4ilkvxdlxeo',
-            'MapPanel.settings': '{showOnlySearchResults:false,ArcGISLayerCheckedState:true}'
-        },
-        auth=(),
-    )
+    headers = {
+        "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8",
+        "Accept-Encoding": "gzip, deflate, br",
+        "Accept-Language": "en-US,en;q=0.5",
+        "Alt-Used": "mhd.ms2soft.com",
+        "Connection": "keep-alive",
+        "DNT": "1",
+        "Referer": f"https://mhd.ms2soft.com/tdms.ui/nmds/analysis/Index?loc=mhd&LocationId={stationInfo['ID']}",
+        "Sec-Fetch-Dest": "iframe",
+        "Sec-Fetch-Mode": "navigate",
+        "Sec-Fetch-Site": "same-origin",
+        "TE": "trailers",
+        "Upgrade-Insecure-Requests": "1",
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:105.0) Gecko/20100101 Firefox/105.0"
+    }
 
-    # print(f'{report.status_code=}')
-    if report.status_code == 200:
-        pass
-    else:
-        raise Exception(f'Report Generation Connection Error: Status Code {report.status_code}')
+    report = session.get(URL, headers=headers, auth=(), timeout=30)
 
-    # Open report iframe
-    soup = BeautifulSoup(report.text, 'html.parser')
-    # print(soup)
-    # print(soup.find('iframe')['src'])
-    iframe_content = session.get('https://mhd.ms2soft.com' + soup.find('iframe')['src'], timeout=30)
-    # slow website, needed to add delay
+    logger.info('%s status code: %s', startDate, report.status_code)
 
-    return iframe_content
+    logInfo = ''
+    if report.status_code != 200:
+        logInfo = 'Unable to reach site to download data'
 
-def save_iframe(iframe, stationInfo):
-    """_summary_
+    # ['ScrapeTime', 'DateReqest', 'DateScraped', 'StatusCode', 'QC', 'LogInfo']
+    scrapeLog = [datetime.now(), startDate, '', report.status_code, '', logInfo]
 
-    Args:
-        iframe (_type_): _description_
-    """
+    return report, scrapeLog
+
+def save_iframe(iframe, stationID, scrapeDate, fileNote=None):
     iframesoup = BeautifulSoup(iframe.content, 'html.parser')
     iframesouppretty = iframesoup.prettify()
-    # print(iframesoup.prettify())
 
-    dfsave = pd.read_html(iframe.content)
+    dateStr = scrapeDate.strftime(r'%Y%m%d')
 
-    with open('testing/iframe_content.pkl', 'wb') as f:
-        pickle.dump(dfsave, f)
-
-
-    # stationID = dfsave[9].iloc[1][1]
-    # date = dfsave[9].iloc[5][1]
-    # dateStr = datetime.strptime(date, r'%m/%d/%Y').strftime(r'%Y%m%d')
-
-    stationID = stationInfo[0]
-    date = stationInfo[1]
-    dateStr = date.strftime(r'%Y%m%d')
+    if fileNote is None:
+        fileNote = '_'
+    else:
+        fileNote = '_' + fileNote + '_'
 
     # pylint: disable=consider-using-enumerate
-    with open(f'testing/iframe_{stationID}_{dateStr}.txt','w', encoding='UTF-8') as out:
+    with open(f'testing/iframe{fileNote}{stationID}_{dateStr}.txt','w', encoding='UTF-8') as out:
         for i in range(0, len(iframesouppretty)):
             try:
                 out.write(iframesouppretty[i])
             except Exception:
-                print('Error printing iframe to file')
+                logger.info('Error printing iframe to file')
     # pylint: enable=consider-using-enumerate
 
+def save_download_records(stationInfo, downloadedDates):
+    # Save log of download results for each date
+    logName = f'{stationInfo["ID"]}-log'
+    downloadedDates.to_pickle(f'data/{logName}.pkl', protocol=3)
+    logger.info('Saved %s.pkl', logName)
+
+    if __name__ == '__main__':
+        downloadedDates.to_csv(f'testing/{logName}.csv')
+        logger.info('Saved %s.csv', logName)
+
+def load_download_records(stationID):
+    path = os.getcwd()
+    currentFolder = os.path.basename(path)
+    logger.debug('cwd: %s', currentFolder)
+
+    if currentFolder == 'dataSources':
+        parent = os.path.dirname(path)
+        dataFolder = parent + '/data'
+    else:
+        dataFolder = path + '/data'
+
+    dataFile = f'{dataFolder}/{stationID}.pkl'
+    logFile = f'{dataFolder}/{stationID}-log.pkl'
+
+    # Load count data
+    try:
+        stationData = pd.read_pickle(dataFile)
+    except Exception:
+        logger.info('Could not find %s, create new dataframe', dataFile)
+        stationData = pd.DataFrame()
+
+    # Load scraped days log
+    try:
+        dataLog = pd.read_pickle(logFile)
+    except Exception:
+        logger.info('Could not find %s, create new dataframe', logFile)
+        columns = ['ScrapeTime', 'DateReqest', 'DateScraped', 'StatusCode', 'QC', 'LogInfo']
+        dataLog = pd.DataFrame(columns=columns)
+
+    # Create list of dates that are either downloaded or have known data issues (missing/failed QC)
+    downloadedDates = dataLog[(dataLog['QC'] == 'Passed') | (dataLog['QC'] == 'Failed')]
+    downloadedDates = pd.to_datetime(downloadedDates['DateScraped'], format=r'%Y%m%d')
+    downloadedDates = downloadedDates.to_list()
+
+    return stationData, dataLog, downloadedDates
+
 # %% Data Cleaning
-def clean_iframe(iframe_content, stationInfo):
-    dfs = pd.read_html(iframe_content.content)
+def clean_iframe(iframe_content, stationInfo, scrapeLog):
+    try:
+        dfs = pd.read_html(iframe_content.content)
+    except Exception as e:
+        errorNote = f'Failed to read iframe content: {e}'
+        logger.info(errorNote)
+        scrapeLog[-1] = f'{scrapeLog[-1]}{pipe}{errorNote}'
+        save_iframe(iframe_content, stationInfo[0], stationInfo[1], 'read_html_fail')
+        return pd.DataFrame(), scrapeLog
 
     # Find correct tables from iframe content based on lengths
     dfLens = [x.shape[0] for x in dfs]
+
     # Table with metadata
     try:
         dfInfo = dfs[dfLens.index(8)]
-    except:
+    except Exception as e:
+        errorNote = f'Unable to find metadata table: {e}'
         if __name__ == '__main__':
-            save_iframe(iframe_content, stationInfo)
-        raise Exception('Unable to find metadata table') from None
+            save_iframe(iframe_content, stationInfo[0], stationInfo[1], 'no_meta_data_table')
+        scrapeLog[-1] = f'{scrapeLog[-1]}{pipe}{errorNote}'
+        logger.info(errorNote)
+        return pd.DataFrame(), scrapeLog
+
     # Table with data
     try:
         dfData = dfs[dfLens.index(31)]
-    except:
+    except Exception as e:
+        errorNote = f'Unable to find data table: {e}'
         if __name__ == '__main__':
-            save_iframe(iframe_content, stationInfo)
-        raise Exception('Unable to find data table') from None
+            save_iframe(iframe_content, stationInfo[0], stationInfo[1], 'no_data_table')
+        scrapeLog[-1] = f'{scrapeLog[-1]}{pipe}{errorNote}'
+        logger.info(errorNote)
+        return pd.DataFrame(), scrapeLog
 
     # Get station ID from metadata table
     stationID = np.where(dfInfo.to_numpy() == 'Location Id:')
@@ -168,23 +232,25 @@ def clean_iframe(iframe_content, stationInfo):
     countDate = np.where(dfInfo.to_numpy() == 'Count Date')
     countDate = dfInfo.loc[countDate[0][0], countDate[1][0] + 1]
     dateStr = datetime.strptime(countDate, r'%m/%d/%Y').strftime(r'%Y%m%d')
+    # scrapeLog: ['ScrapeTime', 'DateReqest', 'DateScraped', 'StatusCode', 'QC', 'LogInfo']
+    scrapeLog[2] = dateStr
 
     # Check that data passed QC, according to metadata table
     qc_status = np.where(dfInfo.to_numpy() == 'Qc Status:')
     qc_status = dfInfo.loc[qc_status[0][0], qc_status[1][0] + 1]
     if qc_status == 'Accepted':
-        print(f'QC passed on {dateStr}')
+        scrapeLog[4] = 'Passed'
+        logger.debug('QC passed on %s', dateStr)
     else:
-        raise Exception(f'Failed QC on {dateStr}') from None
+        scrapeLog[4] = 'Failed'
+        logger.debug('QC failed on %s', dateStr)
+        return pd.DataFrame(), scrapeLog
 
     # Save data table before cleaning
     # if __name__ == '__main__':
     #     filename = f'testing/{stationID}_{dateStr}'
     #     dfData.to_pickle(filename + '.pkl', protocol=3)
-
-    # Drop useless columns (spacing columns on web page)
-    dfData.dropna(axis=1, how='all', inplace=True)
-
+   
     # Set header
     dfData.columns = [dfData.iloc[3], dfData.iloc[4]]
     dfData.columns.names = ['Type', 'Direction']
@@ -193,64 +259,105 @@ def clean_iframe(iframe_content, stationInfo):
     dfData = dfData.iloc[5:] # Drop top rows
     dfData = dfData.iloc[:-2]  # Drop subtotal rows
 
+    # Drop useless columns (spacing columns on web page)
+    dfData.dropna(axis=1, how='all', inplace=True)
+
     # Set Index
     dfData['Date'] = countDate
     dfData.index = [dfData.iloc[:,-1], dfData.iloc[:,0]]
     dfData.index.names = ['Date', 'Hour']
 
-    # print(df.columns)
-    # print(df[('Bike', 'NB')])
+    # logger.info(df.columns)
+    # logger.info(df[('Bike', 'NB')])
 
-    # filename = f'data/{stationID}_{dateStr}'
-    # dfData.to_csv(filename + '.csv')
-    # dfData.to_pickle(filename + '.pkl', protocol=3)
+    if __name__ == '__main__':
+        filename = f'testing/{stationID}_{dateStr}-clean'
+        # dfData.to_csv(filename + '.csv')
+        dfData.to_pickle(f'{filename}.pkl', protocol=3)
 
-    return dfData
+    scrapeLog[-1] = f'{scrapeLog[-1]}{pipe}iframe cleaned'
+    logger.debug('iframe cleaned for %s', countDate)
 
-def download_all_data(session, stations):
-    # stationDfs = []
+    return dfData, scrapeLog
 
-    for station in stations:
+def download_all_data(session, stationList):
+    # Download data for each station from the given start date to present
+
+    # Station list: array of form [SationID, FirstScrapeDate]
+    for station in stationList:
         stationID = station[0]
-        startDate = station[1]
+        scrapeDate = station[1]
 
-        print(f'Start downloading {stationID}')
+        # Import pickle of previous downloaded dates and data
+        stationData, stationDataLog, downloadedDates = load_download_records(stationID)
 
-        stationDf = pd.DataFrame()
-        while (startDate <= date.today()):
-            try:
-                downloadedDay = ms2soft_download_day(session, startDate, stationID)
-                # save_iframe(downloadedDay)
-                newdf = clean_iframe(downloadedDay, station)
-                stationDf = pd.concat([stationDf, newdf])
-                print()
-            except Exception as e:
-                print(f'{startDate}: {e}')
-            finally:
-                startDate += timedelta(days=1)
-        # stationDfs.append(stationDf)
-        stationDf.to_pickle(f'data/{stationID}.pkl', protocol=3)
-    print('Completed downloaded all data')
-    # return stationDfs
+        logger.info('%s: Start downloading %s', datetime.now(), stationID)
+
+        while scrapeDate <= date.today():
+
+            if scrapeDate not in downloadedDates:
+                logger.debug('Downloading %s', scrapeDate)
+                downloadedDay, scrapeLog = ms2soft_download_day(session, scrapeDate, stationID)
+
+                try:
+                    # save_iframe(downloadedDay)
+                    newData, scrapeLog = clean_iframe(downloadedDay, station, scrapeLog)
+                    stationData = pd.concat([stationData, newData])
+                    stationData.reset_index(inplace=True, drop=True)
+
+                    # Update log note ['ScrapeTime', 'DateReqest', 'DateScraped', 'StatusCode', 'QC', 'LogInfo']
+                    scrapeLog[-1] = f'{scrapeLog[-1]}{pipe}Date Added to Data'
+
+                    logger.debug('%s appended to dataframe', scrapeDate)
+                except Exception as e:
+                    # Update log note ['ScrapeTime', 'DateReqest', 'DateScraped', 'StatusCode', 'QC', 'LogInfo']
+                    scrapeLog[-1] = f'{scrapeLog[-1]}{pipe}{e}'
+                    logger.debug('%s data error: %s',scrapeDate, e)
+                finally:
+                    scrapeDate += timedelta(days=1)
+
+                # Add scrape log for date to station scraping log
+                stationDataLog.loc[len(stationDataLog)] = scrapeLog
+
+            else:
+                logger.info('No need to download %s', scrapeDate)
+                scrapeDate += timedelta(days=1)
+
+        stationData.to_pickle(f'data/{stationID}.pkl', protocol=3)
+        stationDataLog.to_pickle(f'data/{stationID}-log.pkl', protocol=3)
+
+        # Save in human readble form for debug
+        if __name__ == '__main__':
+            stationDataLog.to_csv(f'testing/{stationID}-log.csv')
+
+    logger.info('Completed downloaded all data')
 
 # %% Run as script
-if __name__ == "__main__":
-    Jan2020 = date(2020, 1, 1)
-    Jan2021 = date(2021, 1, 1)
+def main(): # Prevents accidental globals
 
+    # Station list: array of form [SationID, FirstScrapeDate]
     stationList = [
         # Lex Minuteman
         # ['4001', date(2020, 1, 1)], \
+        ['4001', date(2022, 9, 1)], \
         # Medford Fellsway
-        ['4004_SB', date(2021, 7, 1)], \
+        # ['4004_SB', date(2022, 9, 1)], \
         # ['4004_NB', date(2021, 7, 1)], \
         # Cambridge Charles River Dam
         # ['6003_EB', date(2021, 7, 1)],\
         ]
 
-    # station = stations[stationList[0]]
-    # startDay = datetime.now() - timedelta(days=1)
+    session = ms2soft_session()
 
-    ms2softSession = ms2soft_session()
+    download_all_data(session, stationList)
 
-    download_all_data(ms2softSession, stationList)
+if __name__ == "__main__":
+    # pylint: disable=ungrouped-imports
+    import logging.config
+    logging.config.fileConfig(fname='log.conf', disable_existing_loggers=False)
+    logger = logging.getLogger(__name__)
+    logger.setLevel('DEBUG')
+    logger.debug("Logging is configured.")
+
+    # Run scraping
+    main()

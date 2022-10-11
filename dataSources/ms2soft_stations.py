@@ -26,8 +26,9 @@ stations = {
         'Area Type': 'Urban',
         'Functional Class': 'Trail or Shared Use Path',
         'Qc Group': 'Basic QC',
-        'ReportLocationSetId': 5224,
-        'LocationSetId': 2763970,
+        '_id': 'b923623a-dd05-4c2f-9c28-630d88c8dc9a',
+        'ReportLocationSetId': 5341,
+        'LocationSetId': 2789244,
         },
     '4002_NB': { # Salem, 2021
         'ID': '4002_NB',
@@ -117,8 +118,9 @@ stations = {
         'Area Type': 'Urban',
         'Functional Class': 'Principal Arterial – Other',
         'Qc Group': 'Basic QC',
-        'ReportLocationSetId': 5230,
-        'LocationSetId': 2764347,
+        '_id': 'beac5471-54d6-4d5e-a7ae-7153fd7b3957',
+        'ReportLocationSetId': 5342,
+        'LocationSetId': 2789381,
         },
     '4004_NB': { # Medford Fellsway, 2021
         'ID': '4004_NB',
