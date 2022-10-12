@@ -4,7 +4,7 @@
 tweepy==4.4.0
 pandas==1.4.3
 sodapy==2.1.1
-matplotlib==3.5.3
+matplotlib==3.6.1
 scipy==1.9.1
 
 #datetime==
