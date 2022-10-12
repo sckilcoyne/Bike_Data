@@ -117,7 +117,7 @@ def ms2soft_download_day(session, startDate, stationId):
     if report.status_code != 200:
         logInfo = 'Unable to reach site to download data'
 
-    # ['ScrapeTime', 'DateReqest', 'DateScraped', 'StatusCode', 'QC', 'LogInfo']
+    # ['ScrapeTime', 'DateRequest', 'DateScraped', 'StatusCode', 'QC', 'LogInfo']
     scrapeLog = [datetime.now(), startDate, '', report.status_code, '', logInfo]
 
     return report, scrapeLog
@@ -178,12 +178,17 @@ def load_download_records(stationID):
         dataLog = pd.read_pickle(logFile)
     except Exception:
         logger.info('Could not find %s, create new dataframe', logFile)
-        columns = ['ScrapeTime', 'DateReqest', 'DateScraped', 'StatusCode', 'QC', 'LogInfo']
+        columns = ['ScrapeTime', 'DateRequest', 'DateScraped', 'StatusCode', 'QC', 'LogInfo']
         dataLog = pd.DataFrame(columns=columns)
 
     # Create list of dates that are either downloaded or have known data issues (missing/failed QC)
-    downloadedDates = dataLog[(dataLog['QC'] == 'Passed') | (dataLog['QC'] == 'Failed')]
-    downloadedDates = pd.to_datetime(downloadedDates['DateScraped'], format=r'%Y%m%d')
+    # downloadedDates = dataLog[(dataLog['QC'] == 'Passed') | (dataLog['QC'] == 'Failed')]
+    # downloadedDates = pd.to_datetime(downloadedDates['DateScraped'], format=r'%Y%m%d')
+
+    # Create list of dates that have been attempted, except for last few to check them again
+    downloadedDates = dataLog['DateRequest']
+    downloadedDates.drop(downloadedDates.tail(7).index, inplace=True)
+
     downloadedDates = downloadedDates.to_list()
 
     return stationData, dataLog, downloadedDates
@@ -232,7 +237,7 @@ def clean_iframe(iframe_content, stationInfo, scrapeLog):
     countDate = np.where(dfInfo.to_numpy() == 'Count Date')
     countDate = dfInfo.loc[countDate[0][0], countDate[1][0] + 1]
     dateStr = datetime.strptime(countDate, r'%m/%d/%Y').strftime(r'%Y%m%d')
-    # scrapeLog: ['ScrapeTime', 'DateReqest', 'DateScraped', 'StatusCode', 'QC', 'LogInfo']
+    # scrapeLog: ['ScrapeTime', 'DateRequest', 'DateScraped', 'StatusCode', 'QC', 'LogInfo']
     scrapeLog[2] = dateStr
 
     # Check that data passed QC, according to metadata table
@@ -284,10 +289,11 @@ def format_tweet(stationID, countData):
     stationName = stations_info[stationID]['TweetName']
 
     bikeCount = countData.xs('Bike', axis=1, level=1).xs('Total', axis=1, level=1)
-    bikeCount = bikeCount.astype(int).sum()
+    bikeCount = bikeCount.astype(int).sum().values[0]
     # totalCount = countData[('Total','Total')].astype(int).sum()
 
-    dateString = countData('Date', axis=1, level=1)[0]
+    dateString = countData.xs('Date', axis=1, level=0)
+    dateString = dateString.iloc[0].values[0]
     dateString = pd.to_datetime(dateString, format=r'%m/%d/%Y')
     dateString = dateString.strftime('%a %b %d')
 
@@ -321,21 +327,23 @@ def download_all_data(session, stationList):
                     stationData = pd.concat([stationData, newData])
                     stationData.reset_index(inplace=True, drop=True)
 
-                    # Update log note ['ScrapeTime', 'DateReqest', 'DateScraped', 'StatusCode', 'QC', 'LogInfo']
+                    # Update log note ['ScrapeTime', 'DateRequest', 'DateScraped', 'StatusCode', 'QC', 'LogInfo']
                     scrapeLog[-1] = f'{scrapeLog[-1]}{pipe}Date Added to Data'
 
                     logger.debug('%s appended to dataframe', scrapeDate)
 
+                except Exception as e:
+                    # Update log note ['ScrapeTime', 'DateRequest', 'DateScraped', 'StatusCode', 'QC', 'LogInfo']
+                    scrapeLog[-1] = f'{scrapeLog[-1]}{pipe}{e}'
+                    logger.debug('%s data error: %s',scrapeDate, e)
+                
+                else:
                     try:
                         newTweet = format_tweet(stationID, newData)
                         tweetList.append(newTweet)
                     except Exception as e:
                         logger.info('Failed to make tweet: %s', e)
 
-                except Exception as e:
-                    # Update log note ['ScrapeTime', 'DateReqest', 'DateScraped', 'StatusCode', 'QC', 'LogInfo']
-                    scrapeLog[-1] = f'{scrapeLog[-1]}{pipe}{e}'
-                    logger.debug('%s data error: %s',scrapeDate, e)
                 finally:
                     scrapeDate += timedelta(days=1)
 
@@ -343,7 +351,7 @@ def download_all_data(session, stationList):
                 stationDataLog.loc[len(stationDataLog)] = scrapeLog
 
             else:
-                logger.info('No need to download %s', scrapeDate)
+                logger.debug('No need to download %s', scrapeDate)
                 scrapeDate += timedelta(days=1)
 
         stationData.to_pickle(f'data/{stationID}.pkl', protocol=3)
@@ -375,6 +383,10 @@ def main(): # Prevents accidental globals
 
     return tweetList
 
+def print_tweets(tweets):
+    for tweet in tweets:
+        print(f'TWEET: {tweet}')
+
 if __name__ == "__main__":
     # pylint: disable=ungrouped-imports
     import logging.config
@@ -384,4 +396,8 @@ if __name__ == "__main__":
     logger.debug("Logging is configured.")
 
     # Run scraping
-    _ = main()
+    Tweets = main()
+
+    print_tweets(Tweets)
+
+    

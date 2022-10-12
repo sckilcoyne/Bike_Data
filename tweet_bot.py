@@ -19,6 +19,7 @@ import logging.config
 # pylint: disable=import-error
 from utils.configTwitterBot import create_client
 from dataSources import cambridge_totem as totem
+from dataSources import ms2soft
 from dataSources import retweeter
 # pylint: enable=import-error
 
@@ -87,6 +88,20 @@ def main():
         except Exception as e:
             logger.info('tweet_bot>totem.main() raised exception. Continue on...', exc_info=e)
             # pass
+
+        # Mass Nonmotorized Database System (ms2soft)
+        try:
+            tweetList = ms2soft.main()
+
+            if tweetList is not None:
+                logger.info('Tweets:')
+                for tweet in tweetList:
+                    logger.info(tweet)
+                    client.create_tweet(text=tweet)
+            else:
+                logger.info('No new tweets from NMDS (tweet_bot>main)')
+        except Exception as e:
+            logger.info('tweet_bot>ms2soft.main() raised exception. Continue on...', exc_info=e)
 
 
         # Retweet
