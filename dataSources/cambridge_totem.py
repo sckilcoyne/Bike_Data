@@ -392,7 +392,7 @@ def main():
 if __name__ == '__main__':
     # pylint: disable=ungrouped-imports
     import logging.config
-    logging.config.fileConfig('log.conf')
+    logging.config.fileConfig(fname='log.conf', disable_existing_loggers=False)
     logger = logging.getLogger(__name__)
     logger.setLevel('DEBUG')
     logger.debug("Logging is configured.")
