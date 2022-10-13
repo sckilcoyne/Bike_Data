@@ -14,7 +14,7 @@ import pandas as pd
 import numpy as np
 
 # pylint: disable=import-error
-import ms2soft_stations
+from dataSources import ms2soft_stations
 stations_info = ms2soft_stations.stations
 # pylint: enable=import-error
 
@@ -321,6 +321,7 @@ def download_all_data(session, stationList):
                 logger.debug('Downloading %s', scrapeDate)
                 downloadedDay, scrapeLog = ms2soft_download_day(session, scrapeDate, stationID)
 
+                newData = None
                 try:
                     # save_iframe(downloadedDay)
                     newData, scrapeLog = clean_iframe(downloadedDay, station, scrapeLog)
