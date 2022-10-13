@@ -2,7 +2,7 @@
 # %% Initialize
 # from tracemalloc import start
 # import json
-import pickle
+# import pickle
 import os
 import sys
 import logging
@@ -202,7 +202,7 @@ def clean_iframe(iframe_content, stationInfo, scrapeLog):
         logger.info(errorNote)
         scrapeLog[-1] = f'{scrapeLog[-1]}{pipe}{errorNote}'
         save_iframe(iframe_content, stationInfo[0], stationInfo[1], 'read_html_fail')
-        return pd.DataFrame(), scrapeLog
+        return None, scrapeLog
 
     # Find correct tables from iframe content based on lengths
     dfLens = [x.shape[0] for x in dfs]
@@ -216,7 +216,7 @@ def clean_iframe(iframe_content, stationInfo, scrapeLog):
             save_iframe(iframe_content, stationInfo[0], stationInfo[1], 'no_meta_data_table')
         scrapeLog[-1] = f'{scrapeLog[-1]}{pipe}{errorNote}'
         logger.info(errorNote)
-        return pd.DataFrame(), scrapeLog
+        return None, scrapeLog
 
     # Table with data
     try:
@@ -227,7 +227,7 @@ def clean_iframe(iframe_content, stationInfo, scrapeLog):
             save_iframe(iframe_content, stationInfo[0], stationInfo[1], 'no_data_table')
         scrapeLog[-1] = f'{scrapeLog[-1]}{pipe}{errorNote}'
         logger.info(errorNote)
-        return pd.DataFrame(), scrapeLog
+        return None, scrapeLog
 
     # Get station ID from metadata table
     stationID = np.where(dfInfo.to_numpy() == 'Location Id:')
@@ -249,7 +249,7 @@ def clean_iframe(iframe_content, stationInfo, scrapeLog):
     else:
         scrapeLog[4] = 'Failed'
         logger.debug('QC failed on %s', dateStr)
-        return pd.DataFrame(), scrapeLog
+        return None, scrapeLog
 
     # Save data table before cleaning
     # if __name__ == '__main__':
@@ -336,16 +336,16 @@ def download_all_data(session, stationList):
                     # Update log note ['ScrapeTime', 'DateRequest', 'DateScraped', 'StatusCode', 'QC', 'LogInfo']
                     scrapeLog[-1] = f'{scrapeLog[-1]}{pipe}{e}'
                     logger.debug('%s data error: %s',scrapeDate, e)
-                
-                else:
+
+                finally:
+                    scrapeDate += timedelta(days=1)
+
+                if newData is not None:
                     try:
                         newTweet = format_tweet(stationID, newData)
                         tweetList.append(newTweet)
                     except Exception as e:
                         logger.info('Failed to make tweet: %s', e)
-
-                finally:
-                    scrapeDate += timedelta(days=1)
 
                 # Add scrape log for date to station scraping log
                 stationDataLog.loc[len(stationDataLog)] = scrapeLog

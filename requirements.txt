@@ -3,9 +3,11 @@
 
 tweepy==4.4.0
 pandas==1.4.3
+numpy==1.22.2
 sodapy==2.1.1
 matplotlib==3.5.3
 scipy==1.9.1
+beautifulsoup4==4.10.0
 
 #datetime==
 #time==

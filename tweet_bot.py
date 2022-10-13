@@ -78,8 +78,8 @@ def main():
             tweetList, _, _, _ = totem.main()
             # tweetList, results_df, updateDaily, recordsNew = totem.main()
 
-            if tweetList is not None:
-                logger.info('Tweets:')
+            if (tweetList is not None) and (len(tweetList) > 0):
+                logger.info('Broadway totem Tweets:')
                 for tweet in tweetList:
                     logger.info(tweet)
                     client.create_tweet(text=tweet)
@@ -93,13 +93,13 @@ def main():
         try:
             tweetList = ms2soft.main()
 
-            if tweetList is not None:
-                logger.info('Tweets:')
+            if (tweetList is not None) and (len(tweetList) > 0):
+                logger.info('NMDS-ms2soft Tweets:')
                 for tweet in tweetList:
                     logger.info(tweet)
                     client.create_tweet(text=tweet)
             else:
-                logger.info('No new tweets from NMDS (tweet_bot>main)')
+                logger.info('No new tweets from NMDS-ms2soft (tweet_bot>main)')
         except Exception as e:
             logger.info('tweet_bot>ms2soft.main() raised exception. Continue on...', exc_info=e)
 
