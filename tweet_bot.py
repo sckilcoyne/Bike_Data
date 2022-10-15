@@ -32,13 +32,23 @@ logger.debug("Logging is configured.")
 # %% Functions
 
 
-# def sleep_till(timeSleep):
-#     """[summary]
+def sleep_till(timeSleep=8):
+    """_summary_
 
-#     Args:
-#         timeSleep ([type]): [description]
-#     """
-#     now = datetime.now()
+    Args:
+        timeSleep (int, optional): Hour to sleep until. Defaults to 8.
+    """
+    now = datetime.now()
+
+    if now.hour > 8:
+        day = now.day + 1
+    else:
+        day = now.day
+
+    wakeTime = datetime(now.year, now.month, day, timeSleep, 0, 0)
+
+    logger.info('Sleep from now (%s) until %s', now, wakeTime)
+    time.sleep((wakeTime - now).seconds)
 
 
 def sleep_time(timeSleep=1*60*60):
@@ -112,7 +122,11 @@ def main():
 
 
         # Time for a nap
-        sleep_time()
+        # Check for new data every hour between 8am and 8pm
+        if  datetime.now().hour > 20:
+            sleep_till()
+        else:
+            sleep_time()
 
 
 
