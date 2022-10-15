@@ -19,6 +19,7 @@ import logging.config
 # pylint: disable=import-error
 from utils.configTwitterBot import create_client
 from dataSources import cambridge_totem as totem
+from dataSources import ms2soft
 from dataSources import retweeter
 # pylint: enable=import-error
 
@@ -31,13 +32,23 @@ logger.debug("Logging is configured.")
 # %% Functions
 
 
-# def sleep_till(timeSleep):
-#     """[summary]
+def sleep_till(timeSleep=8):
+    """_summary_
 
-#     Args:
-#         timeSleep ([type]): [description]
-#     """
-#     now = datetime.now()
+    Args:
+        timeSleep (int, optional): Hour to sleep until. Defaults to 8.
+    """
+    now = datetime.now()
+
+    if now.hour > 8:
+        day = now.day + 1
+    else:
+        day = now.day
+
+    wakeTime = datetime(now.year, now.month, day, timeSleep, 0, 0)
+
+    logger.info('Sleep from now (%s) until %s', now, wakeTime)
+    time.sleep((wakeTime - now).seconds)
 
 
 def sleep_time(timeSleep=1*60*60):
@@ -77,8 +88,8 @@ def main():
             tweetList, _, _, _ = totem.main()
             # tweetList, results_df, updateDaily, recordsNew = totem.main()
 
-            if tweetList is not None:
-                logger.info('Tweets:')
+            if (tweetList is not None) and (len(tweetList) > 0):
+                logger.info('Broadway totem Tweets:')
                 for tweet in tweetList:
                     logger.info(tweet)
                     client.create_tweet(text=tweet)
@@ -87,6 +98,20 @@ def main():
         except Exception as e:
             logger.info('tweet_bot>totem.main() raised exception. Continue on...', exc_info=e)
             # pass
+
+        # Mass Nonmotorized Database System (ms2soft)
+        try:
+            tweetList = ms2soft.main()
+
+            if (tweetList is not None) and (len(tweetList) > 0):
+                logger.info('NMDS-ms2soft Tweets:')
+                for tweet in tweetList:
+                    logger.info(tweet)
+                    client.create_tweet(text=tweet)
+            else:
+                logger.info('No new tweets from NMDS-ms2soft (tweet_bot>main)')
+        except Exception as e:
+            logger.info('tweet_bot>ms2soft.main() raised exception. Continue on...', exc_info=e)
 
 
         # Retweet
@@ -97,7 +122,11 @@ def main():
 
 
         # Time for a nap
-        sleep_time()
+        # Check for new data every hour between 8am and 8pm
+        if  datetime.now().hour > 20:
+            sleep_till()
+        else:
+            sleep_time()
 
 
 
