@@ -1,5 +1,22 @@
 '''
 Database of MassDOT Non-Motorized Database System Stations
+
+To get [_id, ReportLocationSetId, LocationSetId]:
+    In about:config
+        Set browser.link.open_newwindow to 1
+
+    Open Firefox developer tools
+
+    On https://mhd.ms2soft.com/tdms.ui/nmds/analysis/Index?loc=mhd
+        Search for correct station number
+        'Run Report' for 'Single Dat By Station'
+
+    In Firefox Dev Tools Network tab:
+        For Get request, RMB > Copy Value > Copy as cURl
+
+    In VS Code:
+        With cURL still in clipboard, in python > uncurl (pip install uncurl)
+        Find parameters in output and save to repsective station info below    
 '''
 # %% Station IDs
 stations = {
@@ -139,8 +156,9 @@ stations = {
         'ReportLocationSetId': 5377,
         'LocationSetId': 2806069,
         },
-    '4005': { # Arlington Minuteman, n/a
+    '4005': { # Arlington Minuteman, 2022
         'ID': '4005',
+        'TweetName': 'Minuteman Bikeway (Arlington)',
         'Description': 'Minuteman Rail Trail',
         'Community': 'Arlington',
         'County': 'Middlesex',
@@ -149,11 +167,13 @@ stations = {
         'Area Type': 'Urban',
         'Functional Class': 'Trail or Shared Use Path',
         'Qc Group': '',
-        'ReportLocationSetId': '',
-        'LocationSetId': '',
+        '_id': '9111800e-402a-4f37-98c3-b8ac470fc924',
+        'ReportLocationSetId': '5399',
+        'LocationSetId': '2814264',
         },
-    '4006': { # Malden Northen Strand, n/a
+    '4006': { # Malden Northen Strand, 2022
         'ID': '4006',
+        'TweetName': 'Northern Strand Trail (Malden)',
         'Description': 'Northern Strand Trail',
         'Community': 'Malden',
         'County': 'Middlesex',
@@ -162,8 +182,9 @@ stations = {
         'Area Type': 'Urban',
         'Functional Class': 'Trail or Shared Use Path',
         'Qc Group': '',
-        'ReportLocationSetId': '',
-        'LocationSetId': '',
+        '_id': 'aa676b65-2d1f-4a23-b02b-d70370a93e01',
+        'ReportLocationSetId': '5398',
+        'LocationSetId': '2814270',
         },
     '5001_SB': { # Fall River, 2021
         'ID': '5001_SB',

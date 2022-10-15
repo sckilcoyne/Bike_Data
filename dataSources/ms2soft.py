@@ -378,12 +378,14 @@ def main(): # Prevents accidental globals
 
     # Station list: array of form [SationID, FirstScrapeDate]
     stationList = [
-        # Lex Minuteman
+        # Minuteman
         ['4001', date(2020, 8, 15)], \
-        # ['4001', date(2022, 9, 1)], \
+        ['4005', date(2022, 9, 15)], \
         # Medford Fellsway
         ['4004_SB', date(2021, 7, 14)], \
         ['4004_NB', date(2021, 7, 13)], \
+        # Northern Strand
+        ['4006', date(2022, 9, 15)], \
         ]
 
     session = ms2soft_session()
