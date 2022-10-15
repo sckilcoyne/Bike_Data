@@ -186,10 +186,18 @@ def load_download_records(stationID):
     # downloadedDates = pd.to_datetime(downloadedDates['DateScraped'], format=r'%Y%m%d')
 
     # Create list of dates that have been attempted, except for last few to check them again
-    downloadedDates = dataLog['DateRequest']
-    downloadedDates.drop(downloadedDates.tail(7).index, inplace=True)
+    qc = (dataLog['QC'] == 'Failed') | (dataLog['QC'] == 'Passed')
+    qcData = dataLog[qc]
+    noData = dataLog[~qc]
 
-    downloadedDates = downloadedDates.to_list()
+    qcDates = qcData['DateRequest'].unique()
+    noDates = noData['DateRequest'].unique()
+
+    downloadedDates = np.concatenate((qcDates, noDates[:-7])).to_list()
+
+    # downloadedDates = dataLog['DateRequest'].unique()
+    # downloadedDates.drop(downloadedDates.tail(7).index, inplace=True)
+    # downloadedDates = downloadedDates.to_list()
 
     return stationData, dataLog, downloadedDates
 
@@ -315,7 +323,7 @@ def download_all_data(session, stationList):
 
         logger.info('%s: Start downloading %s', datetime.now(), stationID)
 
-        while scrapeDate <= date.today():
+        while scrapeDate < date.today():
 
             if scrapeDate not in downloadedDates:
                 logger.debug('Downloading %s', scrapeDate)
