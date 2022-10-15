@@ -193,7 +193,7 @@ def load_download_records(stationID):
     qcDates = qcData['DateRequest'].unique()
     noDates = noData['DateRequest'].unique()
 
-    downloadedDates = np.concatenate((qcDates, noDates[:-7])).to_list()
+    downloadedDates = np.concatenate((qcDates, noDates[:-7])).tolist()
 
     # downloadedDates = dataLog['DateRequest'].unique()
     # downloadedDates.drop(downloadedDates.tail(7).index, inplace=True)
