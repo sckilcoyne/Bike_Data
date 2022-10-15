@@ -167,9 +167,9 @@ stations = {
         'Area Type': 'Urban',
         'Functional Class': 'Trail or Shared Use Path',
         'Qc Group': '',
-        '_id': '9111800e-402a-4f37-98c3-b8ac470fc924',
-        'ReportLocationSetId': '5399',
-        'LocationSetId': '2814264',
+        '_id': 'f8333dda-35bf-4f9c-aa92-4bcfb304fa1d',
+        'ReportLocationSetId': '5400',
+        'LocationSetId': '2814347',
         },
     '4006': { # Malden Northen Strand, 2022
         'ID': '4006',
