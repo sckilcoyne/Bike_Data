@@ -5,3 +5,4 @@ testing/
 .vscode/
 *.pyc
 .spyproject*
+.streamlit/
