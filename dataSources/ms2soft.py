@@ -10,13 +10,14 @@ from datetime import datetime, timedelta, date
 
 from bs4 import BeautifulSoup
 import requests
+import pickle
 import pandas as pd
 import numpy as np
 
-# pylint: disable=import-error
-from dataSources import ms2soft_stations
-stations_info = ms2soft_stations.stations
-# pylint: enable=import-error
+# # pylint: disable=import-error
+# from dataSources import ms2soft_stations
+# stations_info = ms2soft_stations.stations
+# # pylint: enable=import-error
 
 # pylint: disable=missing-function-docstring
 # pylint: disable=broad-except, invalid-name
@@ -43,7 +44,7 @@ def ms2soft_session():
 
     # In Firefox developer tools, Network tab: For Get request, RMB > Copy Value > Copy as cURl
     # With still in clipboard, in python > uncurl (pip install uncurl)
-    r = session.get('https://mhd.ms2soft.com/tdms.ui/nmds/analysis/Index', 
+    r = session.get('https://mhd.ms2soft.com/tdms.ui/nmds/analysis/Index',
             #?loc=mhd&LocationId=4001',
         headers={
             'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8',
@@ -152,17 +153,20 @@ def save_download_records(stationInfo, downloadedDates):
         downloadedDates.to_csv(f'testing/{logName}.csv')
         logger.info('Saved %s.csv', logName)
 
-def load_download_records(stationID):
+def data_folder():
     path = os.getcwd()
     currentFolder = os.path.basename(path)
     logger.debug('cwd: %s', currentFolder)
 
     if currentFolder == 'dataSources':
         parent = os.path.dirname(path)
-        dataFolder = parent + '/data'
+        folder = parent + '/data'
     else:
-        dataFolder = path + '/data'
+        folder = path + '/data'
 
+    return folder
+
+def load_download_records(stationID):
     dataFile = f'{dataFolder}/{stationID}.pkl'
     logFile = f'{dataFolder}/{stationID}-log.pkl'
 
@@ -186,14 +190,15 @@ def load_download_records(stationID):
     # downloadedDates = pd.to_datetime(downloadedDates['DateScraped'], format=r'%Y%m%d')
 
     # Create list of dates that have been attempted, except for last few to check them again
-    qc = (dataLog['QC'] == 'Failed') | (dataLog['QC'] == 'Passed')
+    # qc = (dataLog['QC'] == 'Failed') | (dataLog['QC'] == 'Passed')
+    qc = (dataLog['QC'] == 'Passed')
     qcData = dataLog[qc]
     noData = dataLog[~qc]
 
     qcDates = qcData['DateRequest'].unique()
     noDates = noData['DateRequest'].unique()
 
-    downloadedDates = np.concatenate((qcDates, noDates[:-7])).tolist()
+    downloadedDates = np.concatenate((qcDates, noDates[:-3])).tolist()
 
     # downloadedDates = dataLog['DateRequest'].unique()
     # downloadedDates.drop(downloadedDates.tail(7).index, inplace=True)
@@ -256,7 +261,9 @@ def clean_iframe(iframe_content, stationInfo, scrapeLog):
         logger.debug('QC passed on %s', dateStr)
     else:
         scrapeLog[4] = 'Failed'
-        logger.debug('QC failed on %s', dateStr)
+        failedQCnote = f'QC failed on {dateStr}'
+        scrapeLog[-1] = f'{scrapeLog[-1]}{pipe}{failedQCnote}'
+        logger.debug(failedQCnote)
         return None, scrapeLog
 
     # Save data table before cleaning
@@ -309,25 +316,24 @@ def format_tweet(stationID, countData):
 
     return tweet
 
-def download_all_data(session, stationList):
+def download_all_data(session):
     # Download data for each station from the given start date to present
     tweetList = []
 
     # Station list: array of form [SationID, FirstScrapeDate]
-    for station in stationList:
-        stationID = station[0]
-        scrapeDate = station[1]
+    for station in stations_info:
+        scrapeDate = stations_info[station]['FirstDate']
 
         # Import pickle of previous downloaded dates and data
-        stationData, stationDataLog, downloadedDates = load_download_records(stationID)
+        stationData, stationDataLog, downloadedDates = load_download_records(station)
 
-        logger.info('%s: Start downloading %s', datetime.now(), stationID)
+        logger.info('%s: Start downloading %s', datetime.now(), station)
 
         while scrapeDate < date.today():
 
             if scrapeDate not in downloadedDates:
-                logger.debug('Downloading %s', scrapeDate)
-                downloadedDay, scrapeLog = ms2soft_download_day(session, scrapeDate, stationID)
+                logger.info('Downloading %s', scrapeDate)
+                downloadedDay, scrapeLog = ms2soft_download_day(session, scrapeDate, station)
 
                 newData = None
                 try:
@@ -337,7 +343,8 @@ def download_all_data(session, stationList):
                     stationData.reset_index(inplace=True, drop=True)
 
                     # Update log note ['ScrapeTime', 'DateRequest', 'DateScraped', 'StatusCode', 'QC', 'LogInfo']
-                    scrapeLog[-1] = f'{scrapeLog[-1]}{pipe}Date Added to Data'
+                    if newData is not None:
+                        scrapeLog[-1] = f'{scrapeLog[-1]}{pipe}Date Added to Data'
 
                     logger.debug('%s appended to dataframe', scrapeDate)
 
@@ -351,8 +358,9 @@ def download_all_data(session, stationList):
 
                 if newData is not None:
                     try:
-                        newTweet = format_tweet(stationID, newData)
+                        newTweet = format_tweet(station, newData)
                         tweetList.append(newTweet)
+                        logger.info('TWEET: %s', newTweet)
                     except Exception as e:
                         logger.info('Failed to make tweet: %s', e)
 
@@ -363,34 +371,41 @@ def download_all_data(session, stationList):
                 logger.debug('No need to download %s', scrapeDate)
                 scrapeDate += timedelta(days=1)
 
-        stationData.to_pickle(f'data/{stationID}.pkl', protocol=3)
-        stationDataLog.to_pickle(f'data/{stationID}-log.pkl', protocol=3)
+        stationData.to_pickle(f'data/{station}.pkl', protocol=3)
+        stationDataLog.to_pickle(f'data/{station}-log.pkl', protocol=3)
 
         # Save in human readble form for debug
         if __name__ == '__main__':
-            stationDataLog.to_csv(f'testing/{stationID}-log.csv')
+            stationDataLog.to_csv(f'testing/{station}-log.csv')
 
     logger.info('Completed downloaded all data')
     return tweetList
 
+# %% Load Station info
+dataFolder = data_folder()
+infile = open(dataFolder + '/ms2soft_stations.pkl', 'rb')
+stations_info = pickle.load(infile)
+# print(records)
+infile.close()
+
 # %% Run as script
 def main(): # Prevents accidental globals
 
-    # Station list: array of form [SationID, FirstScrapeDate]
-    stationList = [
-        # Minuteman
-        ['4001', date(2020, 8, 15)], \
-        ['4005', date(2022, 9, 15)], \
-        # Medford Fellsway
-        ['4004_SB', date(2021, 7, 14)], \
-        ['4004_NB', date(2021, 7, 13)], \
-        # Northern Strand
-        ['4006', date(2022, 9, 15)], \
-        ]
+    # # Station list: array of form [SationID, FirstScrapeDate]
+    # stationList = [
+    #     # Minuteman
+    #     ['4001', date(2020, 8, 15)], \
+    #     ['4005', date(2022, 9, 15)], \
+    #     # Medford Fellsway
+    #     ['4004_SB', date(2021, 7, 14)], \
+    #     ['4004_NB', date(2021, 7, 13)], \
+    #     # Northern Strand
+    #     ['4006', date(2022, 9, 15)], \
+    #     ]
 
     session = ms2soft_session()
 
-    tweetList = download_all_data(session, stationList)
+    tweetList = download_all_data(session)
 
     return tweetList
 
