@@ -190,7 +190,8 @@ def load_download_records(stationID):
     # downloadedDates = pd.to_datetime(downloadedDates['DateScraped'], format=r'%Y%m%d')
 
     # Create list of dates that have been attempted, except for last few to check them again
-    qc = (dataLog['QC'] == 'Failed') | (dataLog['QC'] == 'Passed')
+    # qc = (dataLog['QC'] == 'Failed') | (dataLog['QC'] == 'Passed')
+    qc = (dataLog['QC'] == 'Passed')
     qcData = dataLog[qc]
     noData = dataLog[~qc]
 
@@ -260,7 +261,9 @@ def clean_iframe(iframe_content, stationInfo, scrapeLog):
         logger.debug('QC passed on %s', dateStr)
     else:
         scrapeLog[4] = 'Failed'
-        logger.debug('QC failed on %s', dateStr)
+        failedQCnote = f'QC failed on {dateStr}'
+        scrapeLog[-1] = f'{scrapeLog[-1]}{pipe}{failedQCnote}'
+        logger.debug(failedQCnote)
         return None, scrapeLog
 
     # Save data table before cleaning
@@ -340,7 +343,8 @@ def download_all_data(session):
                     stationData.reset_index(inplace=True, drop=True)
 
                     # Update log note ['ScrapeTime', 'DateRequest', 'DateScraped', 'StatusCode', 'QC', 'LogInfo']
-                    scrapeLog[-1] = f'{scrapeLog[-1]}{pipe}Date Added to Data'
+                    if newData is not None:
+                        scrapeLog[-1] = f'{scrapeLog[-1]}{pipe}Date Added to Data'
 
                     logger.debug('%s appended to dataframe', scrapeDate)
 
