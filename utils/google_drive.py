@@ -13,7 +13,7 @@ gauth = GoogleAuth()
 
 # Creates local webserver and auto
 # handles authentication.
-gauth.LocalWebserverAuth()       
+gauth.LocalWebserverAuth()
 drive = GoogleDrive(gauth)
 
 

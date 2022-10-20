@@ -85,7 +85,7 @@ def main():
 
         # Broadway totem
         try:
-            tweetList, _, _, _ = totem.main()
+            tweetList, _, _, _, _ = totem.main()
             # tweetList, results_df, updateDaily, recordsNew = totem.main()
 
             if (tweetList is not None) and (len(tweetList) > 0):
