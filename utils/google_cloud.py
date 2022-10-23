@@ -78,6 +78,8 @@ def main():
         source_file_name = f'{dataFolder}/{file}'
         time_delta = current_time - os.path.getmtime(source_file_name)
 
+        # Only upload recently updated files
+        # https://stackoverflow.com/questions/68377717/using-python-select-files-in-a-directory-that-have-been-modified-in-the-last-60
         if time_delta < 60 * 60:
             destination_blob_name = f'data/{file}'
             upload_blob(source_file_name, destination_blob_name)

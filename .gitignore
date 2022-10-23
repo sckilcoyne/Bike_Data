@@ -6,3 +6,4 @@ testing/
 *.pyc
 .spyproject*
 .streamlit/
+pages/9_experimental.py

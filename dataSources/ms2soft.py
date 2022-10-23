@@ -364,7 +364,7 @@ def download_all_data(session):
 
         # Import pickle of previous downloaded dates and data
         # stationData, stationDataLog, downloadedDates = load_download_records(station)
-        stationData, stationDataLog, downloadedDates, stationComplete = load_download_records(stationID)
+        stationData, stationDataLog, downloadedDates, stationComplete = load_download_records(station)
 
         logger.info('%s: Start downloading %s', datetime.now(), station)
 
@@ -414,9 +414,9 @@ def download_all_data(session):
 
         # stationData.to_pickle(f'data/{station}.pkl', protocol=3)
         # stationDataLog.to_pickle(f'data/{station}-log.pkl', protocol=3)
-        stationData.to_pickle(f'data/{stationID}-raw.pkl', protocol=3)
-        stationComplete.to_pickle(f'data/{stationID}-complete.pkl', protocol=3)
-        stationDataLog.to_pickle(f'data/{stationID}-log.pkl', protocol=3)
+        stationData.to_pickle(f'data/{station}-raw.pkl', protocol=3)
+        stationComplete.to_pickle(f'data/{station}-complete.pkl', protocol=3)
+        stationDataLog.to_pickle(f'data/{station}-log.pkl', protocol=3)
 
         # Save in human readble form for debug
         if __name__ == '__main__':

@@ -6,18 +6,14 @@ tweepy==4.4.0
 
 pandas==1.5.0
 numpy==1.23.4
-sodapy==2.2.0
-matplotlib==3.6.1
 scipy==1.9.2
+
+matplotlib==3.6.1
+plotly==5.10.0
+
+sodapy==2.2.0
 beautifulsoup4==4.11.1
 lxml==4.9.1
 
 google-cloud-storage==2.5.0
 # pydrive2==1.14.0
-
-#datetime==
-#time==
-
-#pickle==
-#calendar==
-
