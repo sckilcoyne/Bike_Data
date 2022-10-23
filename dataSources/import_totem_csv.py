@@ -56,16 +56,20 @@ def load_dataset(totemdataset):
 
     Returns:
         _type_: _description_
-    """    
+    """
     history = pd.read_csv(totemdataset)
 
     # Clean up data
     history['DateTime'] = pd.to_datetime(history['DateTime'])
 
-    history['Month'] = history['DateTime'].dt.month_name()
+    history['MonthName'] = history['DateTime'].dt.month_name()
+    history['Month'] = history['DateTime'].dt.month
     history['Time'] = history['DateTime'].dt.time
     history['Date'] = history['DateTime'].dt.date
     history['Year'] = history['DateTime'].dt.year
+    history['MonthApprev'] = history['Date'].dt.strftime('%b')
+
+    history.rename(columns = {'Day': 'DayofWeek'}, inplace=True)
 
     return history
 
@@ -106,6 +110,7 @@ def daily_totals(history):
     dailyTotals['Month'] = dailyTotals['Date'].dt.month
     dailyTotals['MonthName'] = dailyTotals['Date'].dt.month_name()
     dailyTotals['DayofWeek'] = dailyTotals['Date'].dt.day_name()
+    dailyTotals['MonthApprev'] = dailyTotals['Date'].dt.strftime('%b')
 
     return dailyTotals
 
@@ -170,8 +175,9 @@ def main():
 
     dailyTotals, records = create_records(history)
 
-    dailyTotals.to_pickle(dataFolder + '/broadway_daily_totals.pkl', protocol=3)
-    utils.pickle_dict(records, 'broadway_records')
+    history.to_pickle(dataFolder + '/broadway-complete.pkl', protocol=3)
+    dailyTotals.to_pickle(dataFolder + '/broadway-daily_totals.pkl', protocol=3)
+    utils.pickle_dict(records, 'broadway-records')
 
     logger.info('History and records saved')
 

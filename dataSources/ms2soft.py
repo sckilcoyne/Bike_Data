@@ -167,7 +167,9 @@ def data_folder():
     return folder
 
 def load_download_records(stationID):
-    dataFile = f'{dataFolder}/{stationID}.pkl'
+    # dataFile = f'{dataFolder}/{stationID}.pkl'
+    dataFile = f'{dataFolder}/{stationID}-raw.pkl'
+    completeFile = f'{dataFolder}/{stationID}-complete.pkl'
     logFile = f'{dataFolder}/{stationID}-log.pkl'
 
     # Load count data
@@ -176,6 +178,14 @@ def load_download_records(stationID):
     except Exception:
         logger.info('Could not find %s, create new dataframe', dataFile)
         stationData = pd.DataFrame()
+
+    
+    # Load cleaned data
+    try:
+        stationComplete = pd.read_pickle(completeFile)
+    except Exception:
+        logger.info('Could not find %s, create new dataframe', completeFile)
+        stationComplete = None
 
     # Load scraped days log
     try:
@@ -204,7 +214,7 @@ def load_download_records(stationID):
     # downloadedDates.drop(downloadedDates.tail(7).index, inplace=True)
     # downloadedDates = downloadedDates.to_list()
 
-    return stationData, dataLog, downloadedDates
+    return stationData, dataLog, downloadedDates, stationComplete
 
 # %% Data Cleaning
 def clean_iframe(iframe_content, stationInfo, scrapeLog):
@@ -300,6 +310,34 @@ def clean_iframe(iframe_content, stationInfo, scrapeLog):
 
     return dfData, scrapeLog
 
+def standardize_df(newdf, fulldf=None):
+    '''Clean up scraped data into consistent format for easier working
+    '''
+    NMDSbike = newdf.xs('Bike', axis=1, level=1).droplevel(level=0, axis=1)
+    NMDSbike['Date'] = newdf.droplevel(level=[1, 2], axis=1)['Date']
+    NMDSbike['Time'] = newdf.droplevel(level=[0, 1], axis=1)['Time']
+
+    NMDSbike['DateTime'] = pd.to_datetime(NMDSbike['Date']+NMDSbike['Time'],
+                                        format=r'%m/%d/%Y%H:%M:%S')
+
+    NMDSbike['Year'] = NMDSbike['DateTime'].dt.year
+    NMDSbike['Month'] = NMDSbike['DateTime'].dt.month
+    NMDSbike['Day'] = NMDSbike['DateTime'].dt.day
+
+    NMDSbike['MonthName'] = NMDSbike['DateTime'].dt.month_name()
+    NMDSbike['DayofWeek'] = NMDSbike['DateTime'].dt.day_name()
+    NMDSbike['MonthApprev'] = NMDSbike['Date'].dt.strftime('%b')
+
+    if fulldf is not None:
+        fulldf = pd.concat([fulldf, NMDSbike])
+    else:
+        fulldf = NMDSbike
+
+    return fulldf
+
+
+# %% Tweeting
+
 def format_tweet(stationID, countData):
     stationName = stations_info[stationID]['TweetName']
 
@@ -325,7 +363,8 @@ def download_all_data(session):
         scrapeDate = stations_info[station]['FirstDate']
 
         # Import pickle of previous downloaded dates and data
-        stationData, stationDataLog, downloadedDates = load_download_records(station)
+        # stationData, stationDataLog, downloadedDates = load_download_records(station)
+        stationData, stationDataLog, downloadedDates, stationComplete = load_download_records(stationID)
 
         logger.info('%s: Start downloading %s', datetime.now(), station)
 
@@ -363,6 +402,8 @@ def download_all_data(session):
                         logger.info('TWEET: %s', newTweet)
                     except Exception as e:
                         logger.info('Failed to make tweet: %s', e)
+                    
+                    stationComplete = standardize_df(newData, stationComplete)
 
                 # Add scrape log for date to station scraping log
                 stationDataLog.loc[len(stationDataLog)] = scrapeLog
@@ -371,8 +412,11 @@ def download_all_data(session):
                 logger.debug('No need to download %s', scrapeDate)
                 scrapeDate += timedelta(days=1)
 
-        stationData.to_pickle(f'data/{station}.pkl', protocol=3)
-        stationDataLog.to_pickle(f'data/{station}-log.pkl', protocol=3)
+        # stationData.to_pickle(f'data/{station}.pkl', protocol=3)
+        # stationDataLog.to_pickle(f'data/{station}-log.pkl', protocol=3)
+        stationData.to_pickle(f'data/{stationID}-raw.pkl', protocol=3)
+        stationComplete.to_pickle(f'data/{stationID}-complete.pkl', protocol=3)
+        stationDataLog.to_pickle(f'data/{stationID}-log.pkl', protocol=3)
 
         # Save in human readble form for debug
         if __name__ == '__main__':

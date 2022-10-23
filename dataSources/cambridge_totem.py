@@ -57,15 +57,16 @@ def load_pickled_data():
     logger.debug('dataFolder: %s', dataFolder)
     logger.debug('dataFolder contents: %s', os.listdir(path=dataFolder))
 
-    broadwayDailyTotals = pd.read_pickle(
-        dataFolder + '/broadway_daily_totals.pkl')
+    broadwayDailyTotals = pd.read_pickle(f'{dataFolder}/broadway-daily_totals.pkl')
 
-    infile = open(dataFolder + '/broadway_records.pkl', 'rb')
+    broadwayComplete = pd.read_pickle(f'{dataFolder}/broadway-complete.pkl')
+
+    infile = open(dataFolder + '/broadway-records.pkl', 'rb')
     broadwayRecords = pickle.load(infile)
     # print(records)
     infile.close()
 
-    return broadwayDailyTotals, broadwayRecords
+    return broadwayDailyTotals, broadwayRecords, broadwayComplete
 
 
 # %% API Info
@@ -236,6 +237,7 @@ def daily_counts(newData):
     updateDaily['Month'] = updateDaily['Date'].dt.month
     updateDaily['MonthName'] = updateDaily['Date'].dt.month_name()
     updateDaily['DayofWeek'] = updateDaily['Date'].dt.day_name()
+    updateDaily['MonthApprev'] = updateDaily['Date'].dt.strftime('%b')
 
     return updateDaily
 
@@ -317,30 +319,30 @@ def records_compare(broadwayDailyTotals, updateDaily, records):
 # %% Save Data
 
 
-def save_count_data(newDailyCounts, records):
+def save_count_data(newDailyCounts, records, broadwayComplete):
     """Append new daily counts and update daily records to saved files.
 
     Args:
         dailyCounts (_type_): _description_
         records (_type_): _description_
     """
-    newDailyCounts.to_pickle('data/broadway_daily_totals.pkl', protocol=3)
+    broadwayComplete.to_pickle('data/broadway-complete.pkl', protocol=3)
+    newDailyCounts.to_pickle('data/broadway-daily_totals.pkl', protocol=3)
     # records.to_pickle('data/broadway_records.pkl', protocol=3)
-    utils.pickle_dict(records, 'data/broadway_records')
+    utils.pickle_dict(records, 'data/broadway-records')
 
     logger.info('Saved updated daily counts and records.')
 
 
 # %% Plot Data
 
+# def plot_data(results_df):
+#     """[summary]
 
-def plot_data(results_df):
-    """[summary]
-
-    Args:
-        results_df ([type]): [description]
-    """
-    results_df.plot('time', 'total')
+#     Args:
+#         results_df ([type]): [description]
+#     """
+#     results_df.plot('time', 'total')
 
 # %% Main
 
@@ -355,7 +357,7 @@ def main():
 
     # Load saved data
     try:
-        broadwayDailyTotals, broadwayRecords = load_pickled_data()
+        broadwayDailyTotals, broadwayRecords, broadwayComplete = load_pickled_data()
     except Exception as e:
         logger.error('Failed to load pickeled data.',  exc_info=e)
 
@@ -372,20 +374,21 @@ def main():
         logger.debug(type(newData_df))
 
         if newData_df is not None:
+            broadwayComplete = pd.concat([broadwayComplete, newData_df])
             newDailyCounts = daily_counts(newData_df)
             broadwayDailyTotals = pd.concat([broadwayDailyTotals, newDailyCounts])
 
             recordsNew, tweetList = records_compare(broadwayDailyTotals,
                 newDailyCounts, broadwayRecords)
 
-            save_count_data(broadwayDailyTotals, recordsNew)
+            save_count_data(broadwayDailyTotals, recordsNew, broadwayComplete)
 
             logger.debug(type(newData_df), type(newDailyCounts),
                           type(recordsNew), type(tweetList))
 
-            return tweetList, newData_df, newDailyCounts, recordsNew
+            return tweetList, newData_df, newDailyCounts, recordsNew, broadwayComplete
         else:
-            return None, None, None, None
+            return None, None, None, None, None
 
 
 # %% Run Script
@@ -397,7 +400,7 @@ if __name__ == '__main__':
     logger.setLevel('DEBUG')
     logger.debug("Logging is configured.")
 
-    tweets, results_df, dailyCounts, newRecords = main()
+    tweets, results_df, dailyCounts, newRecords, rawData = main()
     if tweets is not None:
         logger.info(tweets)
         print(tweets)

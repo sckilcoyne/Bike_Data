@@ -18,6 +18,7 @@ import logging.config
 
 # pylint: disable=import-error
 from utils.configTwitterBot import create_client
+from utils import google_cloud
 from dataSources import cambridge_totem as totem
 from dataSources import ms2soft
 from dataSources import retweeter
@@ -85,7 +86,7 @@ def main():
 
         # Broadway totem
         try:
-            tweetList, _, _, _ = totem.main()
+            tweetList, _, _, _, _ = totem.main()
             # tweetList, results_df, updateDaily, recordsNew = totem.main()
 
             if (tweetList is not None) and (len(tweetList) > 0):
@@ -120,6 +121,8 @@ def main():
         except Exception as e:
             logger.info('tweet_bot>retweeter.main() raised exception. Continue on...', exc_info=e)
 
+        # Upload all modified files to google cloud
+        google_cloud.main()
 
         # Time for a nap
         # Check for new data every hour between 8am and 8pm
