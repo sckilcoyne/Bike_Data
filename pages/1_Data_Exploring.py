@@ -1,12 +1,24 @@
 # %% Initialize
 import os
+import pickle
 import streamlit as st
 import pandas as pd
+
 import plotly.express as px
 from plotly import graph_objs as go
 
+from google.oauth2 import service_account
+from google.cloud import storage
+
 # pylint: disable=invalid-name, pointless-string-statement
 
+# Get GCS credentials
+bucket_name = st.secrets["gcp_service_account"]['GCS_BUCKET_NAME']
+# print(f'{bucket_name=}')
+
+# %% Create Google Cloud API client.
+credentials = service_account.Credentials.from_service_account_info(st.secrets["gcp_service_account"])
+client = storage.Client(credentials=credentials)
 
 # %% Set up streamlit
 st.set_page_config(page_title='Boston Bike Data',
@@ -17,18 +29,24 @@ tabFig, tabTest = st.tabs(['Data', 'Test'])
 
 # %% Import Data
 
-path = os.getcwd()
-currentFolder = os.path.basename(path)
+# Uses st.experimental_memo to only rerun when the query changes or after timeout.
+@st.experimental_memo(ttl=60*60*24)
+def read_pickle(fileName):
+    """Read file from Google Cloud Storage
 
-if currentFolder == 'dataSources':
-    parent = os.path.dirname(path)
-    dataFolder = parent + '/data'
-else:
-    dataFolder = path + '/data'
+    Args:
+        fileName (str): Google Cloud Storage file name and path
 
+    Returns:
+        Content loaded from Pickle file
+    """
+    bucket = client.bucket(bucket_name)
+    content = bucket.blob(f'data/{fileName}').download_as_string()
+    data = pickle.loads(content)
+    return data
 
 @st.cache
-def importBroadwayData(folder):
+def importBroadwayData():
     """_summary_
 
     Args:
@@ -38,8 +56,7 @@ def importBroadwayData(folder):
         _type_: _description_
     """
     # Broadway Daily Totals
-    broadwayDaily = pd.read_pickle(
-        folder + '/broadway_daily_totals.pkl')
+    broadwayDaily = read_pickle('broadway_daily_totals.pkl')
 
     broadwayDaily.index = pd.to_datetime(broadwayDaily.index)
 
@@ -57,7 +74,8 @@ def importBroadwayData(folder):
     broadwayDaily.sort_index(ascending=True, inplace=True)
 
     # Broadway full dataset
-    broadwayComplete = pd.read_pickle(folder + '/broadway_complete.pkl')
+    broadwayComplete = read_pickle('broadway_complete.pkl')
+
     broadwayComplete['Hour'] = broadwayComplete['DateTime'].dt.hour
     print(broadwayComplete.columns)
 
@@ -67,8 +85,8 @@ def importBroadwayData(folder):
         hourTotal = group['Total'].sum()
         hourWest = group['Westbound'].sum()
         hourEast = group['Eastbound'].sum()
-        broadwayHourly.append([group.Date.iloc[0], group.Year.iloc[0], 
-                           group.Month.iloc[0], group.Day.iloc[0], 
+        broadwayHourly.append([group.Date.iloc[0], group.Year.iloc[0],
+                           group.Month.iloc[0], group.Day.iloc[0],
                            group.Hour.iloc[0], hourTotal, hourWest, hourEast])
 
     broadwayHourly = pd.DataFrame(broadwayHourly, 
@@ -78,10 +96,9 @@ def importBroadwayData(folder):
     broadwayHourly['day_percentWest'] = broadwayHourly['West'] / broadwayHourly.groupby('Date')['West'].transform('sum')
     broadwayHourly['day_percentEast'] = broadwayHourly['East'] / broadwayHourly.groupby('Date')['East'].transform('sum')
 
-
     return broadwayDaily, broadwayComplete, broadwayHourly
 
-broadwayDailyTotals, broadwayFull, broadwayHourlyTotals = importBroadwayData(dataFolder)
+broadwayDailyTotals, broadwayFull, broadwayHourlyTotals = importBroadwayData()
 
 # %% Plotting
 def plot_daily_per(dailyTotals):
@@ -182,7 +199,7 @@ def plot_daily_vol(dailyTotals):
 
     return fig
 
-def plot_hourly_per(hourlyData, direction='Total'):
+def plot_hourly_per(hourlyData, countDirection='Total'):
     """Plot ridership volume distributions by hour
 
     Args:
@@ -197,7 +214,7 @@ def plot_hourly_per(hourlyData, direction='Total'):
         # print(f'{name=}')
         trace = go.Box()
         trace.name = name
-        trace.y = group['day_percent' + direction]
+        trace.y = group['day_percent' + countDirection]
         fig.add_trace(trace)
 
     fig.update_layout(

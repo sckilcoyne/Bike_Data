@@ -24,9 +24,7 @@ import pandas as pd
 bucket_name = "boston-bike-data"
 
 # %% Create API client.
-credentials = service_account.Credentials.from_service_account_info(
-    st.secrets["gcp_service_account"]
-)
+credentials = service_account.Credentials.from_service_account_info(st.secrets["gcp_service_account"])
 client = storage.Client(credentials=credentials)
 
 # %% Load file
@@ -55,22 +53,3 @@ df = read_pickle(file_path)
 st.write(df)
 st.write(df.columns)
 
-# broadwayDaily = df
-# broadwayDaily.index = pd.to_datetime(broadwayDaily.index)
-
-# broadwayDaily['Day'] = broadwayDaily['Date'].dt.dayofweek
-# broadwayDaily['MonthApprev'] = broadwayDaily['Date'].dt.strftime('%b')
-
-# broadwayDaily.sort_values(by=['Day', 'Month'], ascending=True, inplace=True)
-
-# # print(broadwayDailyTotals.columns)
-
-# dayGroups = broadwayDaily.groupby(['DayofWeek','Month'])
-# broadwayDaily['Percentiles'] = dayGroups['Total'].transform('rank', pct=True)
-# broadwayDaily['Percentiles100'] = broadwayDaily['Percentiles'] * 100
-
-# broadwayDaily.sort_index(ascending=True, inplace=True)
-
-# st.write(broadwayDaily)
-
-# st.write(broadwayDaily.columns)
