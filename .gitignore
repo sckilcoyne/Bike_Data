@@ -2,8 +2,11 @@
 secrets/
 data/
 testing/
+pages/9_*
+
+.streamlit/
 .vscode/
+
+# IDE files
 *.pyc
 .spyproject*
-.streamlit/
-pages/9_experimental.py
