@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 """
+Download data from Cambridge API for Broadway Eco-Totem
 
 https://data.cambridgema.gov/Transportation-Planning/Eco-Totem-Broadway-Bicycle-Count/q8v9-mcfg
 https://data.cambridgema.gov/resource/q8v9-mcfg.json
@@ -17,11 +18,11 @@ import os
 import sys
 import logging
 from datetime import date, timedelta, datetime
-from sodapy import Socrata
-from scipy import stats
 
+from sodapy import Socrata
+
+from scipy import stats
 import pandas as pd
-# import matplotlib.pyplot as plt
 
 # ?Add project folder to be able to import custom modules?
 sys.path.insert(0,os.getcwd())
@@ -35,11 +36,11 @@ import utils.utilFuncs as utils
 # https://stackoverflow.com/questions/15727420/using-logging-in-multiple-modules
 logger = logging.getLogger(__name__)
 
-# %% Load Pickled Data
+# %% Handle data files
 
 
-def load_pickled_data():
-    """[summary]
+def load_count_data():
+    """Load saved data from files
 
     Returns:
         [type]: [description]
@@ -57,16 +58,33 @@ def load_pickled_data():
     logger.debug('dataFolder: %s', dataFolder)
     logger.debug('dataFolder contents: %s', os.listdir(path=dataFolder))
 
-    broadwayDailyTotals = pd.read_pickle(f'{dataFolder}/broadway-daily_totals.pkl')
+    dailyTotals = pd.read_pickle(f'{dataFolder}/broadway-daily_totals.pkl')
 
-    broadwayComplete = pd.read_pickle(f'{dataFolder}/broadway-complete.pkl')
+    completeData = pd.read_pickle(f'{dataFolder}/broadway-complete.pkl')
+    rawData = pd.read_pickle(f'{dataFolder}/broadway-raw.pkl')
 
     infile = open(dataFolder + '/broadway-records.pkl', 'rb')
     broadwayRecords = pickle.load(infile)
     # print(records)
     infile.close()
 
-    return broadwayDailyTotals, broadwayRecords, broadwayComplete
+    return dailyTotals, broadwayRecords, completeData, rawData
+
+def save_count_data(newDailyCounts, records, completeData, rawData):
+    """Append new daily counts and update daily records to saved files.
+
+    Args:
+        dailyCounts (dataframe): _description_
+        records (dict): _description_
+        completeData (dataframe): _description_
+    """
+    completeData.to_pickle('data/broadway-complete.pkl', protocol=3)
+    newDailyCounts.to_pickle('data/broadway-daily_totals.pkl', protocol=3)
+    rawData.to_pickle('data/broadway-raw.pkl', protocol=3)
+
+    utils.pickle_dict(records, 'data/broadway-records')
+
+    logger.info('Saved updated daily counts and records.')
 
 
 # %% API Info
@@ -79,27 +97,6 @@ cambData = 'data.cambridgema.gov'
 
 
 # %% Query Dataset
-# def query_precheck(dailyTotals):
-#     """[summary]
-
-#     Args:
-#         dailyTotals ([type]): [description]
-#     """
-#     lastDay = dailyTotals['Date'].max()
-#     yesterday = date.today() - timedelta(days=1)
-
-#     if (lastDay.date() < yesterday - timedelta(days=2)):
-#         # Need to get multiple days worth of data and iterate over each
-#         logger.info('Data last saved multiple days ago')
-#         query_api(yesterday, lastDay.date())
-#     elif (lastDay.date() == yesterday - timedelta(days=1)) & (time.localtime().tm_hour > 13):
-#         # Pull yesterday's data
-#         logger.info('last data two days ago and it is past 1pm')
-#         query_api(yesterday)
-#     else:
-#         # Don't need to query
-#         logger.info('Saved data is current')
-
 
 def query_api(startDate, endDate):
     """Download data from Socrata API for the Cambridge Totem.
@@ -170,8 +167,6 @@ def query_dataset(broadwayDailyTotals=None):
     Returns:
         pandas dataframe: New data from Socrata
     """
-    # query_precheck(broadwayDailyTotals)
-
     # Determine missing data days to download
     if broadwayDailyTotals is not None:
         lastDay = broadwayDailyTotals['Date'].max()
@@ -241,11 +236,21 @@ def daily_counts(newData):
 
     return updateDaily
 
+def standardize_df(newdf):
+    '''Clean up scraped data into consistent format for easier working
+    '''
+    cleanData = newdf
+
+    return cleanData
+
 # %% Records
 
 
-def records_compare(broadwayDailyTotals, updateDaily, records):
-    """[summary]
+def format_tweet(broadwayDailyTotals, updateDaily, records):
+    """Create new tweets based on new data
+    - Check if day broke a record
+    - Calculate percentile for given day
+    - Add most interesting tibit to tweet
 
     Args:
         updateDaily ([type]): [description]
@@ -258,7 +263,7 @@ def records_compare(broadwayDailyTotals, updateDaily, records):
 
     localeStr = 'Broadway in Cambridge (Eco-Totem)\n'
 
-    for idx, day in updateDaily.iterrows():
+    for _, day in updateDaily.iterrows():
         total = day['Total']
         dailyRecord = records['dailyRecord']
         monthlyRecord = records['monthlyRecords'][day['Month']]
@@ -316,82 +321,67 @@ def records_compare(broadwayDailyTotals, updateDaily, records):
 
     return records, tweetList
 
-# %% Save Data
-
-
-def save_count_data(newDailyCounts, records, broadwayComplete):
-    """Append new daily counts and update daily records to saved files.
-
-    Args:
-        dailyCounts (_type_): _description_
-        records (_type_): _description_
-    """
-    broadwayComplete.to_pickle('data/broadway-complete.pkl', protocol=3)
-    newDailyCounts.to_pickle('data/broadway-daily_totals.pkl', protocol=3)
-    # records.to_pickle('data/broadway_records.pkl', protocol=3)
-    utils.pickle_dict(records, 'data/broadway-records')
-
-    logger.info('Saved updated daily counts and records.')
-
-
-# %% Plot Data
-
-# def plot_data(results_df):
-#     """[summary]
-
-#     Args:
-#         results_df ([type]): [description]
-#     """
-#     results_df.plot('time', 'total')
 
 # %% Main
 
 
 def main():
-    """[summary]
+    """Download new data from Broadway Eco-Totem, clean it, tweet and save.
 
     Returns:
-        [type]: [description]
-    """
+        tweetList: List of tweets generated from new data
+        newData_df: Dataframe of newly downloaded data
+        newDailyCounts: Daily counts from new data
+        recordsNew: Updated records for Broadway
+        completeData: Updated complete history data for Broadway
+    """    
     logger.info('Execute cambridge_totem>main')
 
     # Load saved data
     try:
-        broadwayDailyTotals, broadwayRecords, broadwayComplete = load_pickled_data()
+        dailyTotals, broadwayRecords, completeData, rawData = load_count_data()
     except Exception as e:
         logger.error('Failed to load pickeled data.',  exc_info=e)
 
     # Download new data
     try:
-        newData_df = query_dataset(broadwayDailyTotals)
+        newData_df = query_dataset(dailyTotals)
 
     except Exception as e:
         logger.error('Error updating daily data.',  exc_info=e)
-        return None, None, None, None
+        return None, None, None, None, None
 
     # Analyze new data
     else:
         logger.debug(type(newData_df))
 
         if newData_df is not None:
-            broadwayComplete = pd.concat([broadwayComplete, newData_df])
-            newDailyCounts = daily_counts(newData_df)
-            broadwayDailyTotals = pd.concat([broadwayDailyTotals, newDailyCounts])
+            # Update Raw Data
+            rawData = pd.concat([rawData, newData_df])
+            # Clean up new raw data
+            cleanData = standardize_df(newData_df)
+            # Update Complete Data
+            completeData = pd.concat([completeData, cleanData])
+            # Calculate daily totals
+            newDailyCounts = daily_counts(cleanData)
+            # Update daily totals data
+            dailyTotals = pd.concat([dailyTotals, newDailyCounts])
 
-            recordsNew, tweetList = records_compare(broadwayDailyTotals,
+            recordsNew, tweetList = format_tweet(dailyTotals,
                 newDailyCounts, broadwayRecords)
 
-            save_count_data(broadwayDailyTotals, recordsNew, broadwayComplete)
+            save_count_data(dailyTotals, recordsNew, completeData, rawData)
 
             logger.debug(type(newData_df), type(newDailyCounts),
                           type(recordsNew), type(tweetList))
 
-            return tweetList, newData_df, newDailyCounts, recordsNew, broadwayComplete
+            return tweetList, newData_df, newDailyCounts, recordsNew, completeData
         else:
             return None, None, None, None, None
 
 
 # %% Run Script
+
 if __name__ == '__main__':
     # pylint: disable=ungrouped-imports
     import logging.config
@@ -400,7 +390,7 @@ if __name__ == '__main__':
     logger.setLevel('DEBUG')
     logger.debug("Logging is configured.")
 
-    tweets, results_df, dailyCounts, newRecords, rawData = main()
+    tweets, _, dailyCounts, _, _ = main()
     if tweets is not None:
         logger.info(tweets)
         print(tweets)

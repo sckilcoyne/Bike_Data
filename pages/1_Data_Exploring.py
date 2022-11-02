@@ -3,6 +3,7 @@ import os
 import pickle
 import streamlit as st
 import pandas as pd
+import numpy as np
 
 import plotly.express as px
 from plotly import graph_objs as go
@@ -13,11 +14,12 @@ from google.cloud import storage
 # pylint: disable=invalid-name, pointless-string-statement
 
 # Get GCS credentials
-bucket_name = st.secrets["gcp_service_account"]['GCS_BUCKET_NAME']
+GCP_SA = 'gcp_service_account'
+bucket_name = st.secrets[GCP_SA]['GCS_BUCKET_NAME']
 # print(f'{bucket_name=}')
 
 # %% Create Google Cloud API client.
-credentials = service_account.Credentials.from_service_account_info(st.secrets["gcp_service_account"])
+credentials = service_account.Credentials.from_service_account_info(st.secrets[GCP_SA])
 client = storage.Client(credentials=credentials)
 
 # %% Set up streamlit
@@ -25,7 +27,7 @@ st.set_page_config(page_title='Boston Bike Data',
                    page_icon=':bike:',)
 st.title('[Boston Bike Data](https://twitter.com/BostonBikeData)')
 
-tabFig, tabTest = st.tabs(['Data', 'Test'])
+# tabFig, tabTest = st.tabs(['Data', 'Test'])
 
 # %% Import Data
 
@@ -46,7 +48,7 @@ def read_pickle(fileName):
     return data
 
 @st.cache
-def importBroadwayData():
+def import_prep_data(fileName):
     """_summary_
 
     Args:
@@ -55,53 +57,51 @@ def importBroadwayData():
     Returns:
         _type_: _description_
     """
-    # Broadway Daily Totals
-    broadwayDaily = read_pickle('broadway_daily_totals.pkl')
+    # Import Data
+    dailyTotals = read_pickle(f'{fileName}-daily_totals.pkl')
+    completeData = read_pickle(f'{fileName}-complete.pkl')
 
-    broadwayDaily.index = pd.to_datetime(broadwayDaily.index)
+    # Daily Totals
+    dailyTotals.index = pd.to_datetime(dailyTotals.index)
 
-    broadwayDaily['Day'] = broadwayDaily['Date'].dt.dayofweek
-    broadwayDaily['MonthApprev'] = broadwayDaily['Date'].dt.strftime('%b')
+    dailyTotals['Day'] = dailyTotals['Date'].dt.dayofweek
+    dailyTotals['MonthApprev'] = dailyTotals['Date'].dt.strftime('%b')
 
-    broadwayDaily.sort_values(by=['Day', 'Month'], ascending=True, inplace=True)
+    dailyTotals.sort_values(by=['Day', 'Month'], ascending=True, inplace=True)
 
-    # print(broadwayDailyTotals.columns)
+    # print(dailyTotals.columns)
 
-    dayGroups = broadwayDaily.groupby(['DayofWeek','Month'])
-    broadwayDaily['Percentiles'] = dayGroups['Total'].transform('rank', pct=True)
-    broadwayDaily['Percentiles100'] = broadwayDaily['Percentiles'] * 100
+    dayGroups = dailyTotals.groupby(['DayofWeek','Month'])
+    dailyTotals['Percentiles'] = dayGroups['Total'].transform('rank', pct=True)
+    dailyTotals['Percentiles100'] = dailyTotals['Percentiles'] * 100
 
-    broadwayDaily.sort_index(ascending=True, inplace=True)
+    dailyTotals.sort_index(ascending=True, inplace=True)
 
     # Broadway full dataset
-    broadwayComplete = read_pickle('broadway_complete.pkl')
-
-    broadwayComplete['Hour'] = broadwayComplete['DateTime'].dt.hour
-    print(broadwayComplete.columns)
+    completeData['Hour'] = completeData['DateTime'].dt.hour
+    # print(completeData.columns)
 
     # Create Hourly dataset
-    broadwayHourly = []
-    for name, group in broadwayComplete.groupby(['Date', 'Hour']):
+    hourlyTotals = []
+    for _, group in completeData.groupby(['Date', 'Hour']):
         hourTotal = group['Total'].sum()
         hourWest = group['Westbound'].sum()
         hourEast = group['Eastbound'].sum()
-        broadwayHourly.append([group.Date.iloc[0], group.Year.iloc[0],
+        hourlyTotals.append([group.Date.iloc[0], group.Year.iloc[0],
                            group.Month.iloc[0], group.Day.iloc[0],
                            group.Hour.iloc[0], hourTotal, hourWest, hourEast])
 
-    broadwayHourly = pd.DataFrame(broadwayHourly, 
+    hourlyTotals = pd.DataFrame(hourlyTotals,
             columns=['Date', 'Year', 'Month', 'Day', 'Hour', 'Total', 'West', 'East'])
 
-    broadwayHourly['day_percentTotal'] = broadwayHourly['Total'] / broadwayHourly.groupby('Date')['Total'].transform('sum')
-    broadwayHourly['day_percentWest'] = broadwayHourly['West'] / broadwayHourly.groupby('Date')['West'].transform('sum')
-    broadwayHourly['day_percentEast'] = broadwayHourly['East'] / broadwayHourly.groupby('Date')['East'].transform('sum')
+    hourlyTotals['day_percentTotal'] = hourlyTotals['Total'] / hourlyTotals.groupby('Date')['Total'].transform('sum')
+    hourlyTotals['day_percentWest'] = hourlyTotals['West'] / hourlyTotals.groupby('Date')['West'].transform('sum')
+    hourlyTotals['day_percentEast'] = hourlyTotals['East'] / hourlyTotals.groupby('Date')['East'].transform('sum')
 
-    return broadwayDaily, broadwayComplete, broadwayHourly
-
-broadwayDailyTotals, broadwayFull, broadwayHourlyTotals = importBroadwayData()
+    return dailyTotals, completeData, hourlyTotals
 
 # %% Plotting
-def plot_daily_per(dailyTotals):
+def plot_daily_per(dailyTotals, countDirection='Total'):
     """Plot daily percentile (per day of week and month) for each day over time
 
     Args:
@@ -113,30 +113,64 @@ def plot_daily_per(dailyTotals):
     fig = go.Figure()
 
     fig.add_trace(go.Scatter(
-        x = dailyTotals.index, 
+        x = dailyTotals.index,
         y = dailyTotals['Percentiles100'],
-        name = 'Day in Month Percentile',
+        name = 'Percentile',
         mode = 'markers',
         visible = 'legendonly',
         xhoverformat="%d%b%Y",
         hovertemplate= '%{x}' + '<br>%{y:d} percentile'))
     fig.add_trace(go.Scatter(
-        x = dailyTotals.index, 
+        x = dailyTotals.index,
         y = dailyTotals['Percentiles100'].rolling(28).mean(),
-        name = '28 Day Rolling<br>Normalized Percentile',
+        name = '28 Day Rolling Avg',
         xhoverformat="%d%b%Y",
         hovertemplate= '%{x}' + '<br>%{y:d} percentile'
     ))
 
     fig.update_layout(
         title="Daily Ridership Volume<br><sup>Normalized to day of week and month</sup>",
-        xaxis_title="Date",
+        xaxis=dict(
+            title="Date",
+            # rangeselector=dict(
+            #     buttons=list([
+            #         dict(count=1,
+            #             label="1m",
+            #             step="month",
+            #             stepmode="backward"),
+            #         dict(count=6,
+            #             label="6m",
+            #             step="month",
+            #             stepmode="backward"),
+            #         dict(count=1,
+            #             label="YTD",
+            #             step="year",
+            #             stepmode="todate"),
+            #         dict(count=1,
+            #             label="1y",
+            #             step="year",
+            #             stepmode="backward"),
+            #         dict(step="all")
+            #     ])
+            # ),
+            rangeslider=dict(
+                visible=True
+            ),
+            type="date"
+        ),
         yaxis_title="Normalized Ridership Volume",
+        legend=dict(
+            orientation='h',
+            yanchor='bottom',
+            y=1.02,
+            xanchor='left',
+            x=0.01,
+        ),
     )
 
     return fig
 
-def plot_monthly_vol(dailyTotals):
+def plot_monthly_vol(dailyTotals, countDirection='Total'):
     """Plot box plots for each month
 
     Args:
@@ -161,12 +195,12 @@ def plot_monthly_vol(dailyTotals):
 
     return fig
 
-def plot_daily_vol(dailyTotals):
+def plot_daily_vol(dailyTotals, countDirection='Total'):
     """Plot box plots for each day of week for each month
 
     Args:
         dailyTotals (_type_): _description_
-    """    
+    """
     weekdays = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday']
     weekends = ['Saturday', 'Sunday']
 
@@ -191,8 +225,9 @@ def plot_daily_vol(dailyTotals):
         xaxis_title='Day of Week',
         yaxis_title='Ridership Volume',
         legend=dict(
-            yanchor='top',
-            y=0.99,
+            orientation='h',
+            yanchor='bottom',
+            y=1.02,
             xanchor='left',
             x=0.01
     ))
@@ -228,22 +263,60 @@ def plot_hourly_per(hourlyData, countDirection='Total'):
     # st.dataframe(hourlyData)
     return fig
 
+# %% Data/Fig Layout
 
+def main():
+    '''Create GUI for data display
+    '''
+    # add map:
+    # https://docs.streamlit.io/library/api-reference/charts/st.map
+    # https://plotly.com/python/scattermapbox/
+    dataSources =  {'Broadway - Cambridge': {
+                        'FileName': 'broadway',
+                        'Directions': ['Total', 'West', 'East'],
+                        },
+                    'Minuteman - Arlington': {
+                        'FileName': '4005',
+                        'Directions': ['Total', 'West', 'East'],
+                        },
+                    'Minuteman - Lexington':{
+                        'FileName': '4001',
+                        'Directions': ['Total', 'West', 'East'],
+                        },
+                    'Northen Strand - Malden':{
+                        'FileName': '4006',
+                        'Directions': ['Total', 'West', 'East'],
+                        },
+                    'Fellsway NB - Medford':{
+                        'FileName': '4004_NB',
+                        'Directions': ['Total', 'North'],
+                        },
+                    'Fellsway SB - Medford':{
+                        'FileName': '4004_SB',
+                        'Directions': ['Total', 'South'],
+                        },
+                    }
 
-# %% Data/Fig Tab Layout
-with tabFig:
-    st.header('Eco-Totem on Broadway in Cambridge')
+    dataSource = st.selectbox('Data Source',dataSources.keys())
+    dataSource = dataSources[dataSource]
 
-    direction = st.radio('Count Direction',('Total', 'West', 'East'),
-                            horizontal = True)
-    figHourly = plot_hourly_per(broadwayHourlyTotals, direction)
-    st.plotly_chart(figHourly)
+    dailyTotals, completeData, hourlyTotals = import_prep_data(dataSource['FileName'])
 
-    figDailyPer = plot_daily_per(broadwayDailyTotals)
+    direction = st.radio('Count Direction', dataSource['Directions'],
+                            horizontal = True,
+                            help='Not implemented in all graphs yet. Will show Total if not.')
+
+    figDailyPer = plot_daily_per(dailyTotals, direction)
     st.plotly_chart(figDailyPer)
 
-    figMonthlyVol = plot_monthly_vol(broadwayDailyTotals)
+    figHourly = plot_hourly_per(hourlyTotals, direction)
+    st.plotly_chart(figHourly)
+
+    figMonthlyVol = plot_monthly_vol(dailyTotals, direction)
     st.plotly_chart(figMonthlyVol)
 
-    figDailyVol = plot_daily_vol(broadwayDailyTotals)
+    figDailyVol = plot_daily_vol(dailyTotals, direction)
     st.plotly_chart(figDailyVol)
+
+# %% Streamlit Script
+main()
