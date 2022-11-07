@@ -27,13 +27,13 @@ import utils.utilFuncs as utils
 logger = logging.getLogger(__name__)
 
 # Get GCS credentials
-bucket_name = os.getenv('GCS_bucket_name')
-project_id = os.getenv('GCS_project_id')
-private_key_id = os.getenv('GCS_private_key_id')
-private_key = os.getenv('GCS_private_key')
-client_email = os.getenv('GCS_client_email')
-client_id = os.getenv('GCS_client_id')
-client_x509_cert_url = os.getenv('GCS_client_x509_cert_url')
+bucket_name = os.getenv('GCS_BUCKET_NAME')
+project_id = os.getenv('GCS_PROJECT_ID')
+private_key_id = os.getenv('GCS_PRIVATE_KEY_ID')
+private_key = os.getenv('GCS_PRIVATE_KEY')
+client_email = os.getenv('GCS_CLIENT_EMAIL')
+client_id = os.getenv('GCS_CLIENT_ID')
+client_x509_cert_url = os.getenv('GCS_CLIENT_X509_CERT_URL')
 
 # %% Create API client.
 credentials = service_account.Credentials.from_service_account_info({
