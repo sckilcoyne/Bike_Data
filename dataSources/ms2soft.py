@@ -29,6 +29,7 @@ sys.path.insert(0,os.getcwd())
 # Import custom modules
 # pylint: disable=import-error, wrong-import-position
 import utils.utilFuncs as utils
+import utils.data_analysis as da
 # pylint:enable=import-error, wrong-import-position
 
 # Set up logging
@@ -103,13 +104,14 @@ def load_count_data(stationID):
 
     return rawData, dataLog, downloadedDates, completeData
 
-def save_count_data(stationInfo, downloadedDates, completeData, rawData):
+def save_count_data(stationInfo, downloadedDates, completeData, rawData, dailyCounts):
     stationID = stationInfo["ID"]
 
     # Filenames for each data file
     logName = f'{stationID}-log'
     completeName = f'{stationID}-complete'
     rawName = f'{stationID}-raw'
+    dailyName = f'{stationID}-daily_totals'
 
     # Save data files
     downloadedDates.to_pickle(f'data/{logName}.pkl', protocol=3)
@@ -123,6 +125,9 @@ def save_count_data(stationInfo, downloadedDates, completeData, rawData):
 
     rawData.to_pickle(f'data/{rawName}.pkl', protocol=3)
     logger.info('Saved %s.pkl', rawName)
+
+    dailyCounts.to_pickle(f'data/{dailyName}.pkl', protocol=3)
+    logger.info('Saved %s.pkl', dailyName)
 
 # %% Get data from NMDS on ms2soft
 
@@ -339,7 +344,19 @@ def standardize_df(newdf, fulldf=None):
 
     NMDSbike['MonthName'] = NMDSbike['DateTime'].dt.month_name()
     NMDSbike['DayofWeek'] = NMDSbike['DateTime'].dt.day_name()
-    NMDSbike['MonthApprev'] = NMDSbike['Date'].dt.strftime('%b')
+    NMDSbike['MonthApprev'] = NMDSbike['DateTime'].dt.strftime('%b')
+
+    # Unify direction names
+    NMDSbike.columns = NMDSbike.columns.str.replace('NB', 'Northbound')
+    NMDSbike.columns = NMDSbike.columns.str.replace('SB', 'Southbound')
+    NMDSbike.columns = NMDSbike.columns.str.replace('EB', 'Eastbound')
+    NMDSbike.columns = NMDSbike.columns.str.replace('WB', 'Westbound')
+
+    # Set counts to numbers
+    dirList = ['Total', 'Northbound', 'Southbound', 'Eastbound', 'Westbound']
+    for d in dirList:
+        if d in NMDSbike.columns:
+            NMDSbike[d] = NMDSbike[d].apply(pd.to_numeric)
 
     if fulldf is not None:
         fulldf = pd.concat([fulldf, NMDSbike])
@@ -425,9 +442,13 @@ def download_all_data(session):
                 logger.debug('No need to download %s', scrapeDate)
                 scrapeDate += timedelta(days=1)
 
+        # Create daily counts from complete data
+        # [should make it only append new data]
+        dailyCounts = da.daily_counts(completeData)
+
         # stationData.to_pickle(f'data/{station}.pkl', protocol=3)
         # stationDataLog.to_pickle(f'data/{station}-log.pkl', protocol=3)
-        save_count_data(stations_info[station], stationDataLog, completeData, rawData)
+        save_count_data(stations_info[station], stationDataLog, completeData, rawData, dailyCounts)
         # rawData.to_pickle(f'data/{station}-raw.pkl', protocol=3)
         # completeData.to_pickle(f'data/{station}-complete.pkl', protocol=3)
         # stationDataLog.to_pickle(f'data/{station}-log.pkl', protocol=3)

@@ -30,6 +30,7 @@ sys.path.insert(0,os.getcwd())
 # Import custom modules
 # pylint: disable=import-error, wrong-import-position
 import utils.utilFuncs as utils
+import utils.data_analysis as da
 # pylint:enable=import-error, wrong-import-position
 
 # Set up logging
@@ -213,35 +214,47 @@ def check_missing_data(downloadedData_df):
         logger.info(dataUpdateStr)
 
 
-def daily_counts(newData):
-    """[summary]
+# def daily_counts(newData):
+#     """[summary]
 
-    Args:
-        results_df ([type]): [description]
+#     Args:
+#         results_df ([type]): [description]
 
-    Returns:
-        [type]: [description]
-    """
-    # Total counted for each day
-    updateDaily = newData.groupby('Date')['Total'].sum().to_frame()
+#     Returns:
+#         [type]: [description]
+#     """
+#     # Total counted for each day
+#     updateDaily = newData.groupby('Date')['Total'].sum().to_frame()
 
-    updateDaily['Date'] = updateDaily.index.values
-    updateDaily = updateDaily.astype({'Date': 'datetime64'})
+#     updateDaily['Date'] = updateDaily.index.values
+#     updateDaily = updateDaily.astype({'Date': 'datetime64'})
 
-    updateDaily['Year'] = updateDaily['Date'].dt.year
-    updateDaily['Month'] = updateDaily['Date'].dt.month
-    updateDaily['MonthName'] = updateDaily['Date'].dt.month_name()
-    updateDaily['DayofWeek'] = updateDaily['Date'].dt.day_name()
-    updateDaily['MonthApprev'] = updateDaily['Date'].dt.strftime('%b')
+#     updateDaily['Year'] = updateDaily['Date'].dt.year
+#     updateDaily['Month'] = updateDaily['Date'].dt.month
+#     updateDaily['MonthName'] = updateDaily['Date'].dt.month_name()
+#     updateDaily['DayofWeek'] = updateDaily['Date'].dt.day_name()
+#     updateDaily['MonthApprev'] = updateDaily['Date'].dt.strftime('%b')
 
-    return updateDaily
+#     return updateDaily
 
-def standardize_df(newdf):
+def standardize_df(newData):
     '''Clean up scraped data into consistent format for easier working
     '''
-    cleanData = newdf
+    stdData = newData
 
-    return cleanData
+    # Clean up data
+    stdData['DateTime'] = pd.to_datetime(stdData['DateTime'])
+
+    stdData['MonthName'] = stdData['DateTime'].dt.month_name()
+    stdData['Month'] = stdData['DateTime'].dt.month
+    stdData['Time'] = stdData['DateTime'].dt.time
+    stdData['Date'] = stdData['DateTime'].dt.date
+    stdData['Year'] = stdData['DateTime'].dt.year
+    stdData['MonthApprev'] = stdData['DateTime'].dt.strftime('%b')
+
+    stdData.rename(columns = {'Day': 'DayofWeek'}, inplace=True)
+
+    return stdData
 
 # %% Records
 
@@ -334,7 +347,7 @@ def main():
         newDailyCounts: Daily counts from new data
         recordsNew: Updated records for Broadway
         completeData: Updated complete history data for Broadway
-    """    
+    """
     logger.info('Execute cambridge_totem>main')
 
     # Load saved data
@@ -363,7 +376,7 @@ def main():
             # Update Complete Data
             completeData = pd.concat([completeData, cleanData])
             # Calculate daily totals
-            newDailyCounts = daily_counts(cleanData)
+            newDailyCounts = da.daily_counts(cleanData)
             # Update daily totals data
             dailyTotals = pd.concat([dailyTotals, newDailyCounts])
 

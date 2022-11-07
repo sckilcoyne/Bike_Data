@@ -57,21 +57,22 @@ def load_dataset(totemdataset):
     Returns:
         _type_: _description_
     """
-    history = pd.read_csv(totemdataset)
+    rawData = pd.read_csv(totemdataset)
+    completeData = rawData
 
     # Clean up data
-    history['DateTime'] = pd.to_datetime(history['DateTime'])
+    completeData['DateTime'] = pd.to_datetime(completeData['DateTime'])
 
-    history['MonthName'] = history['DateTime'].dt.month_name()
-    history['Month'] = history['DateTime'].dt.month
-    history['Time'] = history['DateTime'].dt.time
-    history['Date'] = history['DateTime'].dt.date
-    history['Year'] = history['DateTime'].dt.year
-    history['MonthApprev'] = history['Date'].dt.strftime('%b')
+    completeData['MonthName'] = completeData['DateTime'].dt.month_name()
+    completeData['Month'] = completeData['DateTime'].dt.month
+    completeData['Time'] = completeData['DateTime'].dt.time
+    completeData['Date'] = completeData['DateTime'].dt.date
+    completeData['Year'] = completeData['DateTime'].dt.year
+    completeData['MonthApprev'] = completeData['DateTime'].dt.strftime('%b')
 
-    history.rename(columns = {'Day': 'DayofWeek'}, inplace=True)
+    completeData.rename(columns = {'Day': 'DayofWeek'}, inplace=True)
 
-    return history
+    return rawData, completeData
 
 
 def download_dataset(filename):
@@ -171,13 +172,14 @@ def main():
         logger.info('Download complete')
 
     logger.info('Loading dataset...')
-    history = load_dataset(datasetCSVlocation)
+    rawData, completeData = load_dataset(datasetCSVlocation)
 
-    dailyTotals, records = create_records(history)
+    dailyTotals, records = create_records(completeData)
 
-    history.to_pickle(dataFolder + '/broadway-complete.pkl', protocol=3)
+    rawData.to_pickle(dataFolder + '/broadway-raw.pkl', protocol=3)
+    completeData.to_pickle(dataFolder + '/broadway-complete.pkl', protocol=3)
     dailyTotals.to_pickle(dataFolder + '/broadway-daily_totals.pkl', protocol=3)
-    utils.pickle_dict(records, 'broadway-records')
+    utils.pickle_dict(records, 'data/broadway-records')
 
     logger.info('History and records saved')
 

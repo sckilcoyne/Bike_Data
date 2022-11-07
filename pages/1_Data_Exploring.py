@@ -64,10 +64,11 @@ def import_prep_data(fileName):
     # Daily Totals
     dailyTotals.index = pd.to_datetime(dailyTotals.index)
 
-    dailyTotals['Day'] = dailyTotals['Date'].dt.dayofweek
+    # st.write(dailyTotals.head(5))
+
     dailyTotals['MonthApprev'] = dailyTotals['Date'].dt.strftime('%b')
 
-    dailyTotals.sort_values(by=['Day', 'Month'], ascending=True, inplace=True)
+    dailyTotals.sort_values(by=['DayofWeek', 'Month'], ascending=True, inplace=True)
 
     # print(dailyTotals.columns)
 
@@ -77,26 +78,46 @@ def import_prep_data(fileName):
 
     dailyTotals.sort_index(ascending=True, inplace=True)
 
-    # Broadway full dataset
+    # Full dataset
     completeData['Hour'] = completeData['DateTime'].dt.hour
     # print(completeData.columns)
 
     # Create Hourly dataset
     hourlyTotals = []
+    columns=['Date', 'Year', 'Month', 'Day', 'Hour', 'Total']
+
+    dirList = ['Northbound', 'Southbound', 'Eastbound', 'Westbound']
+
+    print('\n\n\n\n')
+    print(f'{list(completeData)=}')
+    directions = list(set(dirList) & set(list(completeData)))
+    print(f'{directions=}')
+    columns.extend(directions)
+
     for _, group in completeData.groupby(['Date', 'Hour']):
         hourTotal = group['Total'].sum()
-        hourWest = group['Westbound'].sum()
-        hourEast = group['Eastbound'].sum()
-        hourlyTotals.append([group.Date.iloc[0], group.Year.iloc[0],
-                           group.Month.iloc[0], group.Day.iloc[0],
-                           group.Hour.iloc[0], hourTotal, hourWest, hourEast])
 
-    hourlyTotals = pd.DataFrame(hourlyTotals,
-            columns=['Date', 'Year', 'Month', 'Day', 'Hour', 'Total', 'West', 'East'])
+        row = [group.Date.iloc[0], group.Year.iloc[0],
+                group.Month.iloc[0], group.DayofWeek.iloc[0],
+                group.Hour.iloc[0], hourTotal]
+
+        # st.write(directions)
+        for direction in directions:
+            # st.write(direction)
+            hourDir = group[direction].sum()
+            row.append(hourDir)
+            # print(f'Append {direction}')
+
+        # st.write(row)
+        # print(f'{row=}')
+        hourlyTotals.append(row)
+
+    print(f'{columns=}')
+    hourlyTotals = pd.DataFrame(hourlyTotals, columns=columns)
 
     hourlyTotals['day_percentTotal'] = hourlyTotals['Total'] / hourlyTotals.groupby('Date')['Total'].transform('sum')
-    hourlyTotals['day_percentWest'] = hourlyTotals['West'] / hourlyTotals.groupby('Date')['West'].transform('sum')
-    hourlyTotals['day_percentEast'] = hourlyTotals['East'] / hourlyTotals.groupby('Date')['East'].transform('sum')
+    for direction in directions:
+        hourlyTotals[f'day_percent{direction}'] = hourlyTotals[direction] / hourlyTotals.groupby('Date')[direction].transform('sum')
 
     return dailyTotals, completeData, hourlyTotals
 
@@ -244,6 +265,8 @@ def plot_hourly_per(hourlyData, countDirection='Total'):
         _type_: _description_
     """    
     fig = go.Figure()
+    # print(f'\n\n\nplot_hourly_per: {countDirection=}')
+    # print(f'plot_hourly_per: {list(hourlyData)=}')
 
     for name, group in hourlyData.groupby(['Hour']):
         # print(f'{name=}')
@@ -273,27 +296,27 @@ def main():
     # https://plotly.com/python/scattermapbox/
     dataSources =  {'Broadway - Cambridge': {
                         'FileName': 'broadway',
-                        'Directions': ['Total', 'West', 'East'],
+                        'Directions': ['Total', 'Westbound', 'Eastbound'],
                         },
                     'Minuteman - Arlington': {
                         'FileName': '4005',
-                        'Directions': ['Total', 'West', 'East'],
+                        'Directions': ['Total', 'Northbound', 'Southbound'],
                         },
                     'Minuteman - Lexington':{
                         'FileName': '4001',
-                        'Directions': ['Total', 'West', 'East'],
+                        'Directions': ['Total', 'Northbound', 'Southbound'],
                         },
                     'Northen Strand - Malden':{
                         'FileName': '4006',
-                        'Directions': ['Total', 'West', 'East'],
+                        'Directions': ['Total', 'Westbound', 'Eastbound'],
                         },
                     'Fellsway NB - Medford':{
                         'FileName': '4004_NB',
-                        'Directions': ['Total', 'North'],
+                        'Directions': ['Total'], # Only show total for 1 direction
                         },
                     'Fellsway SB - Medford':{
                         'FileName': '4004_SB',
-                        'Directions': ['Total', 'South'],
+                        'Directions': ['Total'], # Only show total for 1 direction
                         },
                     }
 
@@ -305,6 +328,9 @@ def main():
     direction = st.radio('Count Direction', dataSource['Directions'],
                             horizontal = True,
                             help='Not implemented in all graphs yet. Will show Total if not.')
+    
+    # st.dataframe(dailyTotals)
+    # st.write(dailyTotals.head(5))
 
     figDailyPer = plot_daily_per(dailyTotals, direction)
     st.plotly_chart(figDailyPer)
