@@ -22,7 +22,7 @@ To get [_id, ReportLocationSetId, LocationSetId]:
 import sys
 import os
 
-from datetime import datetime, timedelta, date
+from datetime import date #datetime, timedelta
 
 # ?Add project folder to be able to import custom modules?
 sys.path.insert(0,os.getcwd())

@@ -8,11 +8,12 @@ import sys
 import logging
 from datetime import datetime, timedelta, date
 
-from bs4 import BeautifulSoup
 import requests
 import pickle
 import pandas as pd
 import numpy as np
+
+from bs4 import BeautifulSoup
 
 # # pylint: disable=import-error
 # from dataSources import ms2soft_stations
@@ -28,6 +29,7 @@ sys.path.insert(0,os.getcwd())
 # Import custom modules
 # pylint: disable=import-error, wrong-import-position
 import utils.utilFuncs as utils
+import utils.data_analysis as da
 # pylint:enable=import-error, wrong-import-position
 
 # Set up logging
@@ -37,7 +39,97 @@ logger = logging.getLogger(__name__)
 slash = r'%2F'
 pipe = ' | '
 
-# %% Call ms2soft
+def data_folder():
+    path = os.getcwd()
+    currentFolder = os.path.basename(path)
+    logger.debug('cwd: %s', currentFolder)
+
+    if currentFolder == 'dataSources':
+        parent = os.path.dirname(path)
+        folder = parent + '/data'
+    else:
+        folder = path + '/data'
+
+    return folder
+
+# %% Handle data files
+
+def load_count_data(stationID):
+    # dataFile = f'{dataFolder}/{stationID}.pkl'
+    rawFile = f'{dataFolder}/{stationID}-raw.pkl'
+    completeFile = f'{dataFolder}/{stationID}-complete.pkl'
+    logFile = f'{dataFolder}/{stationID}-log.pkl'
+
+    # Load raw count data
+    try:
+        rawData = pd.read_pickle(rawFile)
+    except Exception:
+        logger.info('Could not find %s, create new dataframe', rawFile)
+        rawData = pd.DataFrame()
+
+
+    # Load cleaned count data
+    try:
+        completeData = pd.read_pickle(completeFile)
+    except Exception:
+        logger.info('Could not find %s, create new dataframe', completeFile)
+        completeData = None
+
+    # Load scraped days log
+    try:
+        dataLog = pd.read_pickle(logFile)
+    except Exception:
+        logger.info('Could not find %s, create new dataframe', logFile)
+        columns = ['ScrapeTime', 'DateRequest', 'DateScraped', 'StatusCode', 'QC', 'LogInfo']
+        dataLog = pd.DataFrame(columns=columns)
+
+    # Create list of dates that are either downloaded or have known data issues (missing/failed QC)
+    # downloadedDates = dataLog[(dataLog['QC'] == 'Passed') | (dataLog['QC'] == 'Failed')]
+    # downloadedDates = pd.to_datetime(downloadedDates['DateScraped'], format=r'%Y%m%d')
+
+    # Create list of dates that have been attempted, except for last few to check them again
+    # qc = (dataLog['QC'] == 'Failed') | (dataLog['QC'] == 'Passed')
+    qc = (dataLog['QC'] == 'Passed') # retry failed dates in case something gets fixed
+    qcData = dataLog[qc]
+    noData = dataLog[~qc]
+
+    qcDates = qcData['DateRequest'].unique()
+    noDates = noData['DateRequest'].unique()
+
+    downloadedDates = np.concatenate((qcDates, noDates[:-3])).tolist()
+
+    # downloadedDates = dataLog['DateRequest'].unique()
+    # downloadedDates.drop(downloadedDates.tail(7).index, inplace=True)
+    # downloadedDates = downloadedDates.to_list()
+
+    return rawData, dataLog, downloadedDates, completeData
+
+def save_count_data(stationInfo, downloadedDates, completeData, rawData, dailyCounts):
+    stationID = stationInfo["ID"]
+
+    # Filenames for each data file
+    logName = f'{stationID}-log'
+    completeName = f'{stationID}-complete'
+    rawName = f'{stationID}-raw'
+    dailyName = f'{stationID}-daily_totals'
+
+    # Save data files
+    downloadedDates.to_pickle(f'data/{logName}.pkl', protocol=3)
+    logger.info('Saved %s.pkl', logName)
+    if __name__ == '__main__':
+        downloadedDates.to_csv(f'testing/{logName}.csv')
+        logger.info('Saved %s.csv', logName)
+
+    completeData.to_pickle(f'data/{completeName}.pkl', protocol=3)
+    logger.info('Saved %s.pkl', completeName)
+
+    rawData.to_pickle(f'data/{rawName}.pkl', protocol=3)
+    logger.info('Saved %s.pkl', rawName)
+
+    dailyCounts.to_pickle(f'data/{dailyName}.pkl', protocol=3)
+    logger.info('Saved %s.pkl', dailyName)
+
+# %% Get data from NMDS on ms2soft
 
 def ms2soft_session():
     session = requests.Session()
@@ -69,7 +161,6 @@ def ms2soft_session():
         return session
     else:
         raise Exception(f'{datetime.now()}: Session Connection Error: Status Code {r.status_code}')
-
 
 def ms2soft_download_day(session, startDate, stationId):
     stationInfo = stations_info[stationId]
@@ -142,69 +233,6 @@ def save_iframe(iframe, stationID, scrapeDate, fileNote=None):
             except Exception:
                 logger.info('Error printing iframe to file')
     # pylint: enable=consider-using-enumerate
-
-def save_download_records(stationInfo, downloadedDates):
-    # Save log of download results for each date
-    logName = f'{stationInfo["ID"]}-log'
-    downloadedDates.to_pickle(f'data/{logName}.pkl', protocol=3)
-    logger.info('Saved %s.pkl', logName)
-
-    if __name__ == '__main__':
-        downloadedDates.to_csv(f'testing/{logName}.csv')
-        logger.info('Saved %s.csv', logName)
-
-def data_folder():
-    path = os.getcwd()
-    currentFolder = os.path.basename(path)
-    logger.debug('cwd: %s', currentFolder)
-
-    if currentFolder == 'dataSources':
-        parent = os.path.dirname(path)
-        folder = parent + '/data'
-    else:
-        folder = path + '/data'
-
-    return folder
-
-def load_download_records(stationID):
-    dataFile = f'{dataFolder}/{stationID}.pkl'
-    logFile = f'{dataFolder}/{stationID}-log.pkl'
-
-    # Load count data
-    try:
-        stationData = pd.read_pickle(dataFile)
-    except Exception:
-        logger.info('Could not find %s, create new dataframe', dataFile)
-        stationData = pd.DataFrame()
-
-    # Load scraped days log
-    try:
-        dataLog = pd.read_pickle(logFile)
-    except Exception:
-        logger.info('Could not find %s, create new dataframe', logFile)
-        columns = ['ScrapeTime', 'DateRequest', 'DateScraped', 'StatusCode', 'QC', 'LogInfo']
-        dataLog = pd.DataFrame(columns=columns)
-
-    # Create list of dates that are either downloaded or have known data issues (missing/failed QC)
-    # downloadedDates = dataLog[(dataLog['QC'] == 'Passed') | (dataLog['QC'] == 'Failed')]
-    # downloadedDates = pd.to_datetime(downloadedDates['DateScraped'], format=r'%Y%m%d')
-
-    # Create list of dates that have been attempted, except for last few to check them again
-    # qc = (dataLog['QC'] == 'Failed') | (dataLog['QC'] == 'Passed')
-    qc = (dataLog['QC'] == 'Passed')
-    qcData = dataLog[qc]
-    noData = dataLog[~qc]
-
-    qcDates = qcData['DateRequest'].unique()
-    noDates = noData['DateRequest'].unique()
-
-    downloadedDates = np.concatenate((qcDates, noDates[:-3])).tolist()
-
-    # downloadedDates = dataLog['DateRequest'].unique()
-    # downloadedDates.drop(downloadedDates.tail(7).index, inplace=True)
-    # downloadedDates = downloadedDates.to_list()
-
-    return stationData, dataLog, downloadedDates
 
 # %% Data Cleaning
 def clean_iframe(iframe_content, stationInfo, scrapeLog):
@@ -300,6 +328,46 @@ def clean_iframe(iframe_content, stationInfo, scrapeLog):
 
     return dfData, scrapeLog
 
+def standardize_df(newdf, fulldf=None):
+    '''Clean up scraped data into consistent format for easier working
+    '''
+    NMDSbike = newdf.xs('Bike', axis=1, level=1).droplevel(level=0, axis=1)
+    NMDSbike['Date'] = newdf.droplevel(level=[1, 2], axis=1)['Date']
+    NMDSbike['Time'] = newdf.droplevel(level=[0, 1], axis=1)['Time']
+
+    NMDSbike['DateTime'] = pd.to_datetime(NMDSbike['Date']+NMDSbike['Time'],
+                                        format=r'%m/%d/%Y%H:%M:%S')
+
+    NMDSbike['Year'] = NMDSbike['DateTime'].dt.year
+    NMDSbike['Month'] = NMDSbike['DateTime'].dt.month
+    NMDSbike['Day'] = NMDSbike['DateTime'].dt.day
+
+    NMDSbike['MonthName'] = NMDSbike['DateTime'].dt.month_name()
+    NMDSbike['DayofWeek'] = NMDSbike['DateTime'].dt.day_name()
+    NMDSbike['MonthApprev'] = NMDSbike['DateTime'].dt.strftime('%b')
+
+    # Unify direction names
+    NMDSbike.columns = NMDSbike.columns.str.replace('NB', 'Northbound')
+    NMDSbike.columns = NMDSbike.columns.str.replace('SB', 'Southbound')
+    NMDSbike.columns = NMDSbike.columns.str.replace('EB', 'Eastbound')
+    NMDSbike.columns = NMDSbike.columns.str.replace('WB', 'Westbound')
+
+    # Set counts to numbers
+    dirList = ['Total', 'Northbound', 'Southbound', 'Eastbound', 'Westbound']
+    for d in dirList:
+        if d in NMDSbike.columns:
+            NMDSbike[d] = NMDSbike[d].apply(pd.to_numeric)
+
+    if fulldf is not None:
+        fulldf = pd.concat([fulldf, NMDSbike])
+    else:
+        fulldf = NMDSbike
+
+    return fulldf
+
+
+# %% Tweeting
+
 def format_tweet(stationID, countData):
     stationName = stations_info[stationID]['TweetName']
 
@@ -325,7 +393,8 @@ def download_all_data(session):
         scrapeDate = stations_info[station]['FirstDate']
 
         # Import pickle of previous downloaded dates and data
-        stationData, stationDataLog, downloadedDates = load_download_records(station)
+        # stationData, stationDataLog, downloadedDates = load_count_data(station)
+        rawData, stationDataLog, downloadedDates, completeData = load_count_data(station)
 
         logger.info('%s: Start downloading %s', datetime.now(), station)
 
@@ -339,8 +408,8 @@ def download_all_data(session):
                 try:
                     # save_iframe(downloadedDay)
                     newData, scrapeLog = clean_iframe(downloadedDay, station, scrapeLog)
-                    stationData = pd.concat([stationData, newData])
-                    stationData.reset_index(inplace=True, drop=True)
+                    rawData = pd.concat([rawData, newData])
+                    rawData.reset_index(inplace=True, drop=True)
 
                     # Update log note ['ScrapeTime', 'DateRequest', 'DateScraped', 'StatusCode', 'QC', 'LogInfo']
                     if newData is not None:
@@ -364,6 +433,8 @@ def download_all_data(session):
                     except Exception as e:
                         logger.info('Failed to make tweet: %s', e)
 
+                    completeData = standardize_df(newData, completeData)
+
                 # Add scrape log for date to station scraping log
                 stationDataLog.loc[len(stationDataLog)] = scrapeLog
 
@@ -371,8 +442,16 @@ def download_all_data(session):
                 logger.debug('No need to download %s', scrapeDate)
                 scrapeDate += timedelta(days=1)
 
-        stationData.to_pickle(f'data/{station}.pkl', protocol=3)
-        stationDataLog.to_pickle(f'data/{station}-log.pkl', protocol=3)
+        # Create daily counts from complete data
+        # [should make it only append new data]
+        dailyCounts = da.daily_counts(completeData)
+
+        # stationData.to_pickle(f'data/{station}.pkl', protocol=3)
+        # stationDataLog.to_pickle(f'data/{station}-log.pkl', protocol=3)
+        save_count_data(stations_info[station], stationDataLog, completeData, rawData, dailyCounts)
+        # rawData.to_pickle(f'data/{station}-raw.pkl', protocol=3)
+        # completeData.to_pickle(f'data/{station}-complete.pkl', protocol=3)
+        # stationDataLog.to_pickle(f'data/{station}-log.pkl', protocol=3)
 
         # Save in human readble form for debug
         if __name__ == '__main__':
@@ -391,18 +470,6 @@ infile.close()
 # %% Run as script
 def main(): # Prevents accidental globals
 
-    # # Station list: array of form [SationID, FirstScrapeDate]
-    # stationList = [
-    #     # Minuteman
-    #     ['4001', date(2020, 8, 15)], \
-    #     ['4005', date(2022, 9, 15)], \
-    #     # Medford Fellsway
-    #     ['4004_SB', date(2021, 7, 14)], \
-    #     ['4004_NB', date(2021, 7, 13)], \
-    #     # Northern Strand
-    #     ['4006', date(2022, 9, 15)], \
-    #     ]
-
     session = ms2soft_session()
 
     tweetList = download_all_data(session)
@@ -411,7 +478,8 @@ def main(): # Prevents accidental globals
 
 def print_tweets(tweets):
     for tweet in tweets:
-        print(f'TWEET: {tweet}')
+        tweetStr = f'TWEET: {tweet}'
+        logger.info(tweetStr)
 
 if __name__ == "__main__":
     # pylint: disable=ungrouped-imports
@@ -425,5 +493,3 @@ if __name__ == "__main__":
     Tweets = main()
 
     print_tweets(Tweets)
-
-    
