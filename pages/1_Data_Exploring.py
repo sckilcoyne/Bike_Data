@@ -64,17 +64,26 @@ def import_prep_data(fileName):
     # Daily Totals
     dailyTotals.index = pd.to_datetime(dailyTotals.index)
 
+    # Get path directions
+    dirList = ['Northbound', 'Southbound', 'Eastbound', 'Westbound']
+    # print(f'\n\n\n\n{list(completeData)=}')
+    directions = list(set(dirList) & set(list(completeData)))
+    # print(f'{directions=}')
+
     # st.write(dailyTotals.head(5))
 
     dailyTotals['MonthApprev'] = dailyTotals['Date'].dt.strftime('%b')
 
     dailyTotals.sort_values(by=['DayofWeek', 'Month'], ascending=True, inplace=True)
 
-    # print(dailyTotals.columns)
+    print(f'\n\nimport_prep_data: {dailyTotals.columns=}')
 
     dayGroups = dailyTotals.groupby(['DayofWeek','Month'])
-    dailyTotals['Percentiles'] = dayGroups['Total'].transform('rank', pct=True)
-    dailyTotals['Percentiles100'] = dailyTotals['Percentiles'] * 100
+    dailyTotals['PercentilesTotal'] = dayGroups['Total'].transform('rank', pct=True)
+    dailyTotals['Percentiles100Total'] = dailyTotals['PercentilesTotal'] * 100
+    for direction in directions:
+        dailyTotals[f'Percentiles{direction}'] = dayGroups[direction].transform('rank', pct=True)
+        dailyTotals[f'Percentiles100{direction}'] = dailyTotals[f'Percentiles{direction}'] * 100
 
     dailyTotals.sort_index(ascending=True, inplace=True)
 
@@ -85,13 +94,6 @@ def import_prep_data(fileName):
     # Create Hourly dataset
     hourlyTotals = []
     columns=['Date', 'Year', 'Month', 'Day', 'Hour', 'Total']
-
-    dirList = ['Northbound', 'Southbound', 'Eastbound', 'Westbound']
-
-    print('\n\n\n\n')
-    print(f'{list(completeData)=}')
-    directions = list(set(dirList) & set(list(completeData)))
-    print(f'{directions=}')
     columns.extend(directions)
 
     for _, group in completeData.groupby(['Date', 'Hour']):
@@ -135,7 +137,7 @@ def plot_daily_per(dailyTotals, countDirection='Total'):
 
     fig.add_trace(go.Scatter(
         x = dailyTotals.index,
-        y = dailyTotals['Percentiles100'],
+        y = dailyTotals[f'Percentiles100{countDirection}'],
         name = 'Percentile',
         mode = 'markers',
         visible = 'legendonly',
@@ -143,7 +145,7 @@ def plot_daily_per(dailyTotals, countDirection='Total'):
         hovertemplate= '%{x}' + '<br>%{y:d} percentile'))
     fig.add_trace(go.Scatter(
         x = dailyTotals.index,
-        y = dailyTotals['Percentiles100'].rolling(28).mean(),
+        y = dailyTotals[f'Percentiles100{countDirection}'].rolling(28).mean(),
         name = '28 Day Rolling Avg',
         xhoverformat="%d%b%Y",
         hovertemplate= '%{x}' + '<br>%{y:d} percentile'
@@ -206,7 +208,7 @@ def plot_monthly_vol(dailyTotals, countDirection='Total'):
         # print(f'{monthname=}')
         trace = go.Box()
         trace.name = monthname
-        trace.y = group['Total']
+        trace.y = group[countDirection]
         fig.add_trace(trace)
     fig.update_layout(
         title='Monthly Ridership Volume Distibutions',
@@ -230,14 +232,14 @@ def plot_daily_vol(dailyTotals, countDirection='Total'):
     weekdayTotals = dailyTotals[dailyTotals['DayofWeek'].isin(weekdays)]
     fig.add_trace(go.Box(
         x = [weekdayTotals['MonthApprev'], weekdayTotals['DayofWeek']],
-        y = weekdayTotals['Total'],
+        y = weekdayTotals[countDirection],
         name='Weekdays'
         ))
 
     weekendTotals = dailyTotals[dailyTotals['DayofWeek'].isin(weekends)]
     fig.add_trace(go.Box(
         x = [weekendTotals['MonthApprev'], weekendTotals['DayofWeek']],
-        y = weekendTotals['Total'],
+        y = weekendTotals[countDirection],
         name='Weekends'
         ))
 
@@ -272,7 +274,7 @@ def plot_hourly_per(hourlyData, countDirection='Total'):
         # print(f'{name=}')
         trace = go.Box()
         trace.name = name
-        trace.y = group['day_percent' + countDirection]
+        trace.y = group[f'day_percent{countDirection}']
         fig.add_trace(trace)
 
     fig.update_layout(
@@ -326,8 +328,7 @@ def main():
     dailyTotals, completeData, hourlyTotals = import_prep_data(dataSource['FileName'])
 
     direction = st.radio('Count Direction', dataSource['Directions'],
-                            horizontal = True,
-                            help='Not implemented in all graphs yet. Will show Total if not.')
+                            horizontal = True,)
     
     # st.dataframe(dailyTotals)
     # st.write(dailyTotals.head(5))

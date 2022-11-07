@@ -15,9 +15,14 @@ import numpy as np
 def daily_counts(newData):
     '''Calculate daily totals
     '''
+    dirList = ['Total', 'Northbound', 'Southbound', 'Eastbound', 'Westbound']
+    directions = list(set(dirList) & set(list(newData)))
+    print(f'daily_counts: {directions}')
+
     # Total counted for each day
-    newData['Total'] = newData['Total'].astype('float')
-    updateDaily = newData.groupby('Date')['Total'].sum().to_frame()
+    # for d in directions:
+    # newData[d] = newData[d].astype('float')
+    updateDaily = newData.groupby('Date')[directions].sum()#.to_frame()
 
     updateDaily['Date'] = updateDaily.index.values
     updateDaily = updateDaily.astype({'Date': 'datetime64'})
