@@ -2,7 +2,7 @@
 # pip show
 # https://realpython.com/twitter-bot-python-tweepy/#deploying-bots-to-a-server-using-docker
 
-tweepy==4.12.0
+tweepy==4.12.1
 
 pandas==1.5.1
 numpy==1.23.4
