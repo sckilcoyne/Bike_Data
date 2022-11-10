@@ -47,7 +47,7 @@ def read_pickle(fileName):
     data = pickle.loads(content)
     return data
 
-@st.cache
+@st.cache(hash_funcs={pd.DataFrame: lambda _: None}, ttl=60*60*12)
 def import_prep_data(fileName):
     """_summary_
 
@@ -57,6 +57,7 @@ def import_prep_data(fileName):
     Returns:
         _type_: _description_
     """
+    print(f'Downloading {fileName}')
     # Import Data
     dailyTotals = read_pickle(f'{fileName}-daily_totals.pkl')
     completeData = read_pickle(f'{fileName}-complete.pkl')
@@ -76,7 +77,7 @@ def import_prep_data(fileName):
 
     dailyTotals.sort_values(by=['DayofWeek', 'Month'], ascending=True, inplace=True)
 
-    print(f'\n\nimport_prep_data: {dailyTotals.columns=}')
+    # print(f'\n\nimport_prep_data: {dailyTotals.columns=}')
 
     dayGroups = dailyTotals.groupby(['DayofWeek','Month'])
     dailyTotals['PercentilesTotal'] = dayGroups['Total'].transform('rank', pct=True)
@@ -114,7 +115,7 @@ def import_prep_data(fileName):
         # print(f'{row=}')
         hourlyTotals.append(row)
 
-    print(f'{columns=}')
+    # print(f'{columns=}')
     hourlyTotals = pd.DataFrame(hourlyTotals, columns=columns)
 
     hourlyTotals['day_percentTotal'] = hourlyTotals['Total'] / hourlyTotals.groupby('Date')['Total'].transform('sum')
@@ -199,7 +200,7 @@ def plot_monthly_vol(dailyTotals, countDirection='Total'):
     Args:
         dailyTotals (_type_): _description_
     """    
-    monthGroups = dailyTotals.groupby(['Month'])
+    monthGroups = dailyTotals.groupby('Month')
 
     fig = go.Figure()
     for name, group in monthGroups:
@@ -270,7 +271,7 @@ def plot_hourly_per(hourlyData, countDirection='Total'):
     # print(f'\n\n\nplot_hourly_per: {countDirection=}')
     # print(f'plot_hourly_per: {list(hourlyData)=}')
 
-    for name, group in hourlyData.groupby(['Hour']):
+    for name, group in hourlyData.groupby('Hour'):
         # print(f'{name=}')
         trace = go.Box()
         trace.name = name
@@ -292,10 +293,12 @@ def plot_hourly_per(hourlyData, countDirection='Total'):
 
 def main():
     '''Create GUI for data display
+
+    add map:
+        https://docs.streamlit.io/library/api-reference/charts/st.map
+        https://plotly.com/python/scattermapbox/
     '''
-    # add map:
-    # https://docs.streamlit.io/library/api-reference/charts/st.map
-    # https://plotly.com/python/scattermapbox/
+    
     dataSources =  {'Broadway - Cambridge': {
                         'FileName': 'broadway',
                         'Directions': ['Total', 'Westbound', 'Eastbound'],
@@ -322,10 +325,17 @@ def main():
                         },
                     }
 
-    dataSource = st.selectbox('Data Source',dataSources.keys())
-    dataSource = dataSources[dataSource]
+    sorceSelection = st.selectbox('Data Source',dataSources.keys())
+    dataSource = dataSources[sorceSelection]
 
+    # if dataSources[dataSource]['completeData'] is None:
+    #     dailyTotals, completeData, hourlyTotals= import_prep_data(dataSources[dataSource]['FileName'])
+    #     dataSources[dataSource]['dailyTotals'] = dailyTotals
+    #     dataSources[dataSource]['completeData'] = completeData
+    #     dataSources[dataSource]['hourlyTotals'] = hourlyTotals
     dailyTotals, completeData, hourlyTotals = import_prep_data(dataSource['FileName'])
+
+    # print(f'{dataSources=}')
 
     direction = st.radio('Count Direction', dataSource['Directions'],
                             horizontal = True,)
