@@ -17,7 +17,7 @@ def daily_counts(newData):
     '''
     dirList = ['Total', 'Northbound', 'Southbound', 'Eastbound', 'Westbound']
     directions = list(set(dirList) & set(list(newData)))
-    print(f'daily_counts: {directions}')
+    # print(f'daily_counts: {directions}')
 
     # Total counted for each day
     # for d in directions:

@@ -7,8 +7,13 @@ Created on Fri Dec 17 20:56:57 2021
 # %% Initialize
 import pickle
 import os
-# import logging
+import logging
 
+# Set up logging
+# https://stackoverflow.com/questions/15727420/using-logging-in-multiple-modules
+logger = logging.getLogger(__name__)
+
+# pylint: disable=invalid-name
 
 # %% Functions
 def pickle_dict(pklDict, fileName):
@@ -60,8 +65,10 @@ def get_data_folder():
     currentFolder = os.path.basename(path)
     if currentFolder == 'utils':
         parent = os.path.dirname(path)
-        dataFolder = parent + '\data'
+        dataFolder = parent + '/data'
     else:
-        dataFolder = currentFolder + '\data'
+        dataFolder = currentFolder + '/data'
+
+    logger.info('dataFolder: %s', dataFolder)
 
     return dataFolder

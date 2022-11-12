@@ -11,7 +11,7 @@ Created on Mon Nov 29 20:21:23 2021
 from datetime import datetime
 import time
 
-# import os
+import os
 # import sys
 import logging
 import logging.config
@@ -29,6 +29,9 @@ from dataSources import retweeter
 logging.config.fileConfig('log.conf', disable_existing_loggers=False)
 logger = logging.getLogger(__name__)
 logger.debug("Logging is configured.")
+
+bucket_name = os.getenv('GCS_BUCKET_NAME')
+logger.info('bucket_name: %s', bucket_name)
 
 # %% Functions
 
@@ -122,7 +125,10 @@ def main():
             logger.info('tweet_bot>retweeter.main() raised exception. Continue on...', exc_info=e)
 
         # Upload all modified files to google cloud
-        google_cloud.main()
+        try:
+            google_cloud.main()
+        except Exception as e:
+            logger.info('tweet_bot>google_cloud.main()  raised exception. Continue on...', exc_info=e)
 
         # Time for a nap
         # Check for new data every hour between 8am and 8pm
@@ -130,9 +136,6 @@ def main():
             sleep_till()
         else:
             sleep_time()
-
-
-
 
 if __name__ == "__main__":
     main()

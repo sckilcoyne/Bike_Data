@@ -397,6 +397,7 @@ def download_all_data(session):
         rawData, stationDataLog, downloadedDates, completeData = load_count_data(station)
 
         logger.info('%s: Start downloading %s', datetime.now(), station)
+        downloadedData = False
 
         while scrapeDate < date.today():
 
@@ -434,6 +435,7 @@ def download_all_data(session):
                         logger.info('Failed to make tweet: %s', e)
 
                     completeData = standardize_df(newData, completeData)
+                    downloadedData = True
 
                 # Add scrape log for date to station scraping log
                 stationDataLog.loc[len(stationDataLog)] = scrapeLog
@@ -448,7 +450,8 @@ def download_all_data(session):
 
         # stationData.to_pickle(f'data/{station}.pkl', protocol=3)
         # stationDataLog.to_pickle(f'data/{station}-log.pkl', protocol=3)
-        save_count_data(stations_info[station], stationDataLog, completeData, rawData, dailyCounts)
+        if downloadedData:
+            save_count_data(stations_info[station], stationDataLog, completeData, rawData, dailyCounts)
         # rawData.to_pickle(f'data/{station}-raw.pkl', protocol=3)
         # completeData.to_pickle(f'data/{station}-complete.pkl', protocol=3)
         # stationDataLog.to_pickle(f'data/{station}-log.pkl', protocol=3)

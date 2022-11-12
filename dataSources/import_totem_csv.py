@@ -58,7 +58,7 @@ def load_dataset(totemdataset):
         _type_: _description_
     """
     rawData = pd.read_csv(totemdataset)
-    completeData = rawData
+    completeData = rawData.copy(deep=True)
 
     # Clean up data
     completeData['DateTime'] = pd.to_datetime(completeData['DateTime'])
