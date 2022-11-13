@@ -125,7 +125,7 @@ def import_prep_data(fileName):
     return dailyTotals, completeData, hourlyTotals
 
 # %% Plotting
-def plot_daily_per(dailyTotals, countDirection='Total'):
+def plot_daily_per(stationName, dailyTotals, countDirection='Total'):
     """Plot daily percentile (per day of week and month) for each day over time
 
     Args:
@@ -135,6 +135,7 @@ def plot_daily_per(dailyTotals, countDirection='Total'):
         _type_: _description_
     """    
     fig = go.Figure()
+    # plotType = st.radio('Plot Type', ['Normalized', 'Counts'], horizontal = True,)
 
     fig.add_trace(go.Scatter(
         x = dailyTotals.index,
@@ -149,40 +150,20 @@ def plot_daily_per(dailyTotals, countDirection='Total'):
         y = dailyTotals[f'Percentiles100{countDirection}'].rolling(28).mean(),
         name = '28 Day Rolling Avg',
         xhoverformat="%d%b%Y",
-        hovertemplate= '%{x}' + '<br>%{y:d} percentile'
+        hovertemplate= '%{x}' + '<br>%{y:d} percentile',
+        connectgaps=False,
     ))
 
     fig.update_layout(
-        title="Daily Ridership Volume<br><sup>Normalized to day of week and month</sup>",
+        title=f'Daily Ridership Volume [{stationName}]<br><sup>Normalized to day of week and month</sup>',
         xaxis=dict(
             title="Date",
-            # rangeselector=dict(
-            #     buttons=list([
-            #         dict(count=1,
-            #             label="1m",
-            #             step="month",
-            #             stepmode="backward"),
-            #         dict(count=6,
-            #             label="6m",
-            #             step="month",
-            #             stepmode="backward"),
-            #         dict(count=1,
-            #             label="YTD",
-            #             step="year",
-            #             stepmode="todate"),
-            #         dict(count=1,
-            #             label="1y",
-            #             step="year",
-            #             stepmode="backward"),
-            #         dict(step="all")
-            #     ])
-            # ),
             rangeslider=dict(
                 visible=True
             ),
             type="date"
         ),
-        yaxis_title="Normalized Ridership Volume",
+        yaxis_title='Normalized Ridership Volume',
         legend=dict(
             orientation='h',
             yanchor='bottom',
@@ -194,13 +175,13 @@ def plot_daily_per(dailyTotals, countDirection='Total'):
 
     return fig
 
-def plot_monthly_vol(dailyTotals, countDirection='Total'):
+def plot_monthly_vol(stationName, dailyTotals, countDirection='Total'):
     """Plot box plots for each month
 
     Args:
         dailyTotals (_type_): _description_
     """    
-    monthGroups = dailyTotals.groupby('Month')
+    monthGroups = dailyTotals.groupby(['Month'])
 
     fig = go.Figure()
     for name, group in monthGroups:
@@ -212,14 +193,14 @@ def plot_monthly_vol(dailyTotals, countDirection='Total'):
         trace.y = group[countDirection]
         fig.add_trace(trace)
     fig.update_layout(
-        title='Monthly Ridership Volume Distibutions',
+        title=f'Monthly Ridership Volume Distibutions [{stationName}]',
         xaxis_title='Month',
         yaxis_title='Ridership Volume',
         showlegend=False)
 
     return fig
 
-def plot_daily_vol(dailyTotals, countDirection='Total'):
+def plot_daily_vol(stationName, dailyTotals, countDirection='Total'):
     """Plot box plots for each day of week for each month
 
     Args:
@@ -245,7 +226,7 @@ def plot_daily_vol(dailyTotals, countDirection='Total'):
         ))
 
     fig.update_layout(
-        title='Daily Ridership Volume Distibutions',
+        title=f'Daily Ridership Volume Distibutions [{stationName}]',
         xaxis_title='Day of Week',
         yaxis_title='Ridership Volume',
         legend=dict(
@@ -258,7 +239,7 @@ def plot_daily_vol(dailyTotals, countDirection='Total'):
 
     return fig
 
-def plot_hourly_per(hourlyData, countDirection='Total'):
+def plot_hourly_per(stationName, hourlyData, countDirection='Total'):
     """Plot ridership volume distributions by hour
 
     Args:
@@ -271,7 +252,7 @@ def plot_hourly_per(hourlyData, countDirection='Total'):
     # print(f'\n\n\nplot_hourly_per: {countDirection=}')
     # print(f'plot_hourly_per: {list(hourlyData)=}')
 
-    for name, group in hourlyData.groupby('Hour'):
+    for name, group in hourlyData.groupby(['Hour']):
         # print(f'{name=}')
         trace = go.Box()
         trace.name = name
@@ -279,7 +260,7 @@ def plot_hourly_per(hourlyData, countDirection='Total'):
         fig.add_trace(trace)
 
     fig.update_layout(
-        title='Hourly Ridership Volume',
+        title=f'Hourly Ridership Volume [{stationName}]',
         xaxis_title='Hour',
         yaxis_title='Daily Ridership Volume Percent',
         showlegend=False,
@@ -287,6 +268,59 @@ def plot_hourly_per(hourlyData, countDirection='Total'):
     )
 
     # st.dataframe(hourlyData)
+    return fig
+
+def plot_all_daily(dataSources):
+    '''Plot all normalized volumes on single view
+    '''
+    fig = go.Figure()
+
+    stationDaily = pd.DataFrame()
+
+    for counter in dataSources:
+        dailyTotals, completeData, hourlyTotals = import_prep_data(dataSources[counter]['FileName'])
+        stationDaily[counter] = dailyTotals['Percentiles100Total']
+        fig.add_trace(go.Scatter(
+            x = dailyTotals.index,
+            y = dailyTotals['Percentiles100Total'].rolling(28).mean(),
+            name = counter,
+            mode='markers',
+            marker_size=2,
+            xhoverformat="%d%b%Y",
+            hovertemplate= '%{y:d} percentile',
+        ))
+
+    stationDaily['mean'] = stationDaily.mean(axis=1)
+    # st.dataframe(stationDaily)
+
+    fig.add_trace(go.Scatter(
+        x = stationDaily.index,
+        y = stationDaily['mean'].rolling(28).mean(),
+        name = 'Mean',
+        xhoverformat="%d%b%Y",
+        hovertemplate= '%{y:d} percentile',
+    ))
+
+    fig.update_layout(
+        title='Daily Ridership Volume (28 day rolling average)',
+        xaxis=dict(
+            title="Date",
+            rangeslider=dict(
+                visible=True
+            ),
+            type="date"
+        ),
+        yaxis_title='Normalized Ridership Volume<br><sup>(by day and month)</sup>',
+        hovermode="x unified",
+        # legend=dict(
+        #     orientation='h',
+        #     yanchor='bottom',
+        #     y=1.02,
+        #     xanchor='left',
+        #     x=0.01,
+        # ),
+    )
+
     return fig
 
 # %% Data/Fig Layout
@@ -325,35 +359,37 @@ def main():
                         },
                     }
 
-    sorceSelection = st.selectbox('Data Source',dataSources.keys())
-    dataSource = dataSources[sorceSelection]
+    singles, everything = st.tabs(['Indiviual Counters', 'Compare Counters'])
 
-    # if dataSources[dataSource]['completeData'] is None:
-    #     dailyTotals, completeData, hourlyTotals= import_prep_data(dataSources[dataSource]['FileName'])
-    #     dataSources[dataSource]['dailyTotals'] = dailyTotals
-    #     dataSources[dataSource]['completeData'] = completeData
-    #     dataSources[dataSource]['hourlyTotals'] = hourlyTotals
-    dailyTotals, completeData, hourlyTotals = import_prep_data(dataSource['FileName'])
+    with singles:
+        dataName = st.selectbox('Data Source',dataSources.keys())
+        dataSource = dataSources[dataName]
+        
+        dailyTotals, completeData, hourlyTotals = import_prep_data(dataSource['FileName'])
 
-    # print(f'{dataSources=}')
+        # print(f'{dataSources=}')
 
-    direction = st.radio('Count Direction', dataSource['Directions'],
-                            horizontal = True,)
-    
-    # st.dataframe(dailyTotals)
-    # st.write(dailyTotals.head(5))
+        direction = st.radio('Count Direction', dataSource['Directions'],
+                                horizontal = True,)
+        
+        # st.dataframe(dailyTotals)
+        # st.write(dailyTotals.head(5))
 
-    figDailyPer = plot_daily_per(dailyTotals, direction)
-    st.plotly_chart(figDailyPer)
+        figDailyPer = plot_daily_per(dataName, dailyTotals, direction)
+        st.plotly_chart(figDailyPer)
 
-    figHourly = plot_hourly_per(hourlyTotals, direction)
-    st.plotly_chart(figHourly)
+        figHourly = plot_hourly_per(dataName, hourlyTotals, direction)
+        st.plotly_chart(figHourly)
 
-    figMonthlyVol = plot_monthly_vol(dailyTotals, direction)
-    st.plotly_chart(figMonthlyVol)
+        figMonthlyVol = plot_monthly_vol(dataName, dailyTotals, direction)
+        st.plotly_chart(figMonthlyVol)
 
-    figDailyVol = plot_daily_vol(dailyTotals, direction)
-    st.plotly_chart(figDailyVol)
+        figDailyVol = plot_daily_vol(dataName, dailyTotals, direction)
+        st.plotly_chart(figDailyVol)
+
+    with everything:
+        fig_all_daily = plot_all_daily(dataSources)
+        st.plotly_chart(fig_all_daily)
 
 # %% Streamlit Script
 main()
