@@ -1,5 +1,6 @@
 # %% Initialize
 import os
+import sys
 import pickle
 import streamlit as st
 import pandas as pd
@@ -10,6 +11,13 @@ from plotly import graph_objs as go
 
 from google.oauth2 import service_account
 from google.cloud import storage
+
+# ?Add project folder to be able to import custom modules?
+sys.path.insert(0,os.getcwd())
+
+# Import custom modules
+# pylint: disable=import-error, wrong-import-position
+import utils.utilSt as ust
 
 # pylint: disable=invalid-name, pointless-string-statement
 
@@ -332,32 +340,32 @@ def main():
         https://docs.streamlit.io/library/api-reference/charts/st.map
         https://plotly.com/python/scattermapbox/
     '''
-    
-    dataSources =  {'Broadway - Cambridge': {
-                        'FileName': 'broadway',
-                        'Directions': ['Total', 'Westbound', 'Eastbound'],
-                        },
-                    'Minuteman - Arlington': {
-                        'FileName': '4005',
-                        'Directions': ['Total', 'Northbound', 'Southbound'],
-                        },
-                    'Minuteman - Lexington':{
-                        'FileName': '4001',
-                        'Directions': ['Total', 'Northbound', 'Southbound'],
-                        },
-                    'Northen Strand - Malden':{
-                        'FileName': '4006',
-                        'Directions': ['Total', 'Westbound', 'Eastbound'],
-                        },
-                    'Fellsway NB - Medford':{
-                        'FileName': '4004_NB',
-                        'Directions': ['Total'], # Only show total for 1 direction
-                        },
-                    'Fellsway SB - Medford':{
-                        'FileName': '4004_SB',
-                        'Directions': ['Total'], # Only show total for 1 direction
-                        },
-                    }
+    dataSources = ust.dataSources
+    # dataSources =  {'Broadway - Cambridge': {
+    #                     'FileName': 'broadway',
+    #                     'Directions': ['Total', 'Westbound', 'Eastbound'],
+    #                     },
+    #                 'Minuteman - Arlington': {
+    #                     'FileName': '4005',
+    #                     'Directions': ['Total', 'Northbound', 'Southbound'],
+    #                     },
+    #                 'Minuteman - Lexington':{
+    #                     'FileName': '4001',
+    #                     'Directions': ['Total', 'Northbound', 'Southbound'],
+    #                     },
+    #                 'Northen Strand - Malden':{
+    #                     'FileName': '4006',
+    #                     'Directions': ['Total', 'Westbound', 'Eastbound'],
+    #                     },
+    #                 'Fellsway NB - Medford':{
+    #                     'FileName': '4004_NB',
+    #                     'Directions': ['Total'], # Only show total for 1 direction
+    #                     },
+    #                 'Fellsway SB - Medford':{
+    #                     'FileName': '4004_SB',
+    #                     'Directions': ['Total'], # Only show total for 1 direction
+    #                     },
+    #                 }
 
     singles, everything = st.tabs(['Indiviual Counters', 'Compare Counters'])
 
