@@ -59,6 +59,7 @@ def load_count_data(stationID):
     rawFile = f'{dataFolder}/{stationID}-raw.pkl'
     completeFile = f'{dataFolder}/{stationID}-complete.pkl'
     logFile = f'{dataFolder}/{stationID}-log.pkl'
+    dailyTotalsFile = f'{dataFolder}/{stationID}-daily_totals.pkl'
 
     # Load raw count data
     try:
@@ -66,7 +67,6 @@ def load_count_data(stationID):
     except Exception:
         logger.info('Could not find %s, create new dataframe', rawFile)
         rawData = pd.DataFrame()
-
 
     # Load cleaned count data
     try:
@@ -82,6 +82,13 @@ def load_count_data(stationID):
         logger.info('Could not find %s, create new dataframe', logFile)
         columns = ['ScrapeTime', 'DateRequest', 'DateScraped', 'StatusCode', 'QC', 'LogInfo']
         dataLog = pd.DataFrame(columns=columns)
+
+    # Load daily totals data
+    try:
+        dailyTotals = pd.read_pickle(dailyTotalsFile)
+    except Exception:
+        logger.info('Could not find %s, create new dataframe', dailyTotals)
+        dailyTotals = None
 
     # Create list of dates that are either downloaded or have known data issues (missing/failed QC)
     # downloadedDates = dataLog[(dataLog['QC'] == 'Passed') | (dataLog['QC'] == 'Failed')]
@@ -102,7 +109,7 @@ def load_count_data(stationID):
     # downloadedDates.drop(downloadedDates.tail(7).index, inplace=True)
     # downloadedDates = downloadedDates.to_list()
 
-    return rawData, dataLog, downloadedDates, completeData
+    return rawData, dataLog, downloadedDates, completeData, dailyTotals
 
 def save_count_data(stationInfo, downloadedDates, completeData, rawData, dailyCounts):
     stationID = stationInfo["ID"]
@@ -394,7 +401,7 @@ def download_all_data(session):
 
         # Import pickle of previous downloaded dates and data
         # stationData, stationDataLog, downloadedDates = load_count_data(station)
-        rawData, stationDataLog, downloadedDates, completeData = load_count_data(station)
+        rawData, stationDataLog, downloadedDates, completeData, dailyTotals = load_count_data(station)
 
         logger.info('%s: Start downloading %s', datetime.now(), station)
         downloadedData = False
@@ -427,14 +434,18 @@ def download_all_data(session):
                     scrapeDate += timedelta(days=1)
 
                 if newData is not None:
+                    standardData = standardize_df(newData)
+
                     try:
-                        newTweet = format_tweet(station, newData)
+                        # newTweet = format_tweet(station, newData)
+                        newTweet = da.format_tweet(station, standardData, dailyTotals)
                         tweetList.append(newTweet)
                         logger.info('TWEET: %s', newTweet)
                     except Exception as e:
                         logger.info('Failed to make tweet: %s', e)
 
-                    completeData = standardize_df(newData, completeData)
+                    
+                    completeData = pd.concat([completeData, standardData])
                     downloadedData = True
 
                 # Add scrape log for date to station scraping log
