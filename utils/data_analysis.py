@@ -51,10 +51,10 @@ def tweet_note(newData, dailyTotals, records=None):
     If not enough data, do weekday/weekend, then seasons
     '''
 
-    total = newData['Total']
+    total = newData['Total'].sum()
 
-    monthName = newData['MonthName']
-    dayofWeek = newData['DayofWeek']
+    monthName = newData['MonthName'][0]
+    dayofWeek = newData['DayofWeek'][0]
 
     # Check record book
     dailyRecordStr = None
@@ -137,10 +137,10 @@ def format_tweet(stationName, newCount, dailyTotals, records=None):
     Write the full tweet for a new day of data
     '''
     # countDate =
-    bikeCount = newCount['Total']
+    bikeCount = newCount['Total'].sum()
     # dateString = pd.to_datetime(countDate, format=r'%m/%d/%Y')
     # dateString = dateString.strftime('%a %b %d')
-    dateString = newCount.iloc[0]['DateTime'].strftime('%a %b %d')
+    dateString = pd.to_datetime(newCount['Date'][0], format=r'%m/%d/%Y').strftime('%a %b %d')
     tweetNote = tweet_note(newCount, dailyTotals, records)
     tweet = f'{stationName}\n{bikeCount} riders on {dateString}{tweetNote}'
     return tweet

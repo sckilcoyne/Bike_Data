@@ -339,6 +339,8 @@ def standardize_df(newdf, fulldf=None):
     '''Clean up scraped data into consistent format for easier working
     '''
     NMDSbike = newdf.xs('Bike', axis=1, level=1).droplevel(level=0, axis=1)
+    NMDSbike.index.names = ['DateIdx', 'TimeIdx'] # Fix index/column name ambiguity
+
     NMDSbike['Date'] = newdf.droplevel(level=[1, 2], axis=1)['Date']
     NMDSbike['Time'] = newdf.droplevel(level=[0, 1], axis=1)['Time']
 
@@ -436,9 +438,12 @@ def download_all_data(session):
                 if newData is not None:
                     standardData = standardize_df(newData)
 
+                    dayCount = da.daily_counts(standardData)
+                    dailyTotals = pd.concat([dailyTotals, dayCount])
+
                     try:
                         # newTweet = format_tweet(station, newData)
-                        newTweet = da.format_tweet(station, standardData, dailyTotals)
+                        newTweet = da.format_tweet(stations_info[station]['TweetName'], standardData, dailyTotals)
                         tweetList.append(newTweet)
                         logger.info('TWEET: %s', newTweet)
                     except Exception as e:
@@ -457,12 +462,12 @@ def download_all_data(session):
 
         # Create daily counts from complete data
         # [should make it only append new data]
-        dailyCounts = da.daily_counts(completeData)
+        # dailyCounts = da.daily_counts(completeData)
 
         # stationData.to_pickle(f'data/{station}.pkl', protocol=3)
         # stationDataLog.to_pickle(f'data/{station}-log.pkl', protocol=3)
         if downloadedData:
-            save_count_data(stations_info[station], stationDataLog, completeData, rawData, dailyCounts)
+            save_count_data(stations_info[station], stationDataLog, completeData, rawData, dailyTotals)
         # rawData.to_pickle(f'data/{station}-raw.pkl', protocol=3)
         # completeData.to_pickle(f'data/{station}-complete.pkl', protocol=3)
         # stationDataLog.to_pickle(f'data/{station}-log.pkl', protocol=3)
