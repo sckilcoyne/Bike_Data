@@ -11,14 +11,16 @@ Created on Mon Nov 29 20:21:23 2021
 from datetime import datetime
 import time
 
-# import os
+import os
 # import sys
 import logging
 import logging.config
 
 # pylint: disable=import-error
 from utils.configTwitterBot import create_client
+from utils import google_cloud
 from dataSources import cambridge_totem as totem
+from dataSources import ms2soft
 from dataSources import retweeter
 # pylint: enable=import-error
 
@@ -28,16 +30,29 @@ logging.config.fileConfig('log.conf', disable_existing_loggers=False)
 logger = logging.getLogger(__name__)
 logger.debug("Logging is configured.")
 
+bucket_name = os.getenv('GCS_BUCKET_NAME')
+logger.info('bucket_name: %s', bucket_name)
+
 # %% Functions
 
 
-# def sleep_till(timeSleep):
-#     """[summary]
+def sleep_till(timeSleep=8):
+    """_summary_
 
-#     Args:
-#         timeSleep ([type]): [description]
-#     """
-#     now = datetime.now()
+    Args:
+        timeSleep (int, optional): Hour to sleep until. Defaults to 8.
+    """
+    now = datetime.now()
+
+    if now.hour > 8:
+        day = now.day + 1
+    else:
+        day = now.day
+
+    wakeTime = datetime(now.year, now.month, day, timeSleep, 0, 0)
+
+    logger.info('Sleep from now (%s) until %s', now, wakeTime)
+    time.sleep((wakeTime - now).seconds)
 
 
 def sleep_time(timeSleep=1*60*60):
@@ -74,11 +89,11 @@ def main():
 
         # Broadway totem
         try:
-            tweetList, _, _, _ = totem.main()
+            tweetList, _, _, _, _ = totem.main()
             # tweetList, results_df, updateDaily, recordsNew = totem.main()
 
-            if tweetList is not None:
-                logger.info('Tweets:')
+            if (tweetList is not None) and (len(tweetList) > 0):
+                logger.info('Broadway totem Tweets:')
                 for tweet in tweetList:
                     logger.info(tweet)
                     client.create_tweet(text=tweet)
@@ -88,6 +103,20 @@ def main():
             logger.info('tweet_bot>totem.main() raised exception. Continue on...', exc_info=e)
             # pass
 
+        # Mass Nonmotorized Database System (ms2soft)
+        try:
+            tweetList = ms2soft.main()
+
+            if (tweetList is not None) and (len(tweetList) > 0):
+                logger.info('NMDS-ms2soft Tweets:')
+                for tweet in tweetList:
+                    logger.info(tweet)
+                    client.create_tweet(text=tweet)
+            else:
+                logger.info('No new tweets from NMDS-ms2soft (tweet_bot>main)')
+        except Exception as e:
+            logger.info('tweet_bot>ms2soft.main() raised exception. Continue on...', exc_info=e)
+
 
         # Retweet
         try:
@@ -95,12 +124,18 @@ def main():
         except Exception as e:
             logger.info('tweet_bot>retweeter.main() raised exception. Continue on...', exc_info=e)
 
+        # Upload all modified files to google cloud
+        try:
+            google_cloud.main()
+        except Exception as e:
+            logger.info('tweet_bot>google_cloud.main()  raised exception. Continue on...', exc_info=e)
 
         # Time for a nap
-        sleep_time()
-
-
-
+        # Check for new data every hour between 8am and 8pm
+        if  datetime.now().hour > 20:
+            sleep_till()
+        else:
+            sleep_time()
 
 if __name__ == "__main__":
     main()

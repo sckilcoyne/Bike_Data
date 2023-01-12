@@ -1,15 +1,23 @@
 # pip list
+# pip show
 # https://realpython.com/twitter-bot-python-tweepy/#deploying-bots-to-a-server-using-docker
 
-tweepy==4.4.0
-pandas==1.4.3
-sodapy==2.1.1
-matplotlib==3.5.3
-scipy==1.9.1
+tweepy==4.12.1
 
-#datetime==
-#time==
+pandas==1.5.2
+numpy==1.24.1
+sodapy==2.2.0
+matplotlib==3.6.2
+scipy==1.10.0
+beautifulsoup4==4.11.1
+lxml==4.9.2
 
-#pickle==
-#calendar==
+matplotlib==3.6.2
+plotly==5.11.0
 
+sodapy==2.2.0
+beautifulsoup4==4.11.1
+lxml==4.9.2
+
+google-cloud-storage==2.7.0
+# pydrive2==1.14.0

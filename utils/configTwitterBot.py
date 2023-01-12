@@ -30,11 +30,11 @@ def create_client():
     Returns:
         [type]: [description]
     """
-    consumerKey = os.getenv('CONSUMER_KEY')
-    consumerSecret = os.getenv('CONSUMER_SECRET')
-    accessToken = os.getenv('ACCESS_TOKEN')
-    accessTokenSecret = os.getenv('ACCESS_TOKEN_SECRET')
-    bearerToken = os.getenv('BEARER_TOKEN')
+    consumerKey = os.getenv('TWTR_CONSUMER_KEY')
+    consumerSecret = os.getenv('TWTR_CONSUMER_SECRET')
+    accessToken = os.getenv('TWTR_ACCESS_TOKEN')
+    accessTokenSecret = os.getenv('TWTR_ACCESS_TOKEN_SECRET')
+    bearerToken = os.getenv('TWTR_BEARER_TOKEN')
 
     if None in [consumerKey, consumerSecret, accessToken, accessTokenSecret, bearerToken]:
         logger.error('Failed to properly load env variables')

@@ -13,7 +13,11 @@ https://data.cambridgema.gov/Public-Works/Commonwealth-Connect-Service-Requests/
 # MassDOT Non-Motorized Database System
 https://mhd.ms2soft.com/TDMS.UI/nmds/dashboard?loc=mhd
 
+https://www.mass.gov/guides/bicycle-and-pedestrian-counts
+https://www.mass.gov/service-details/bicycle-and-pedestrian-coordinators
+
 # Weather Data
 https://www.visualcrossing.com/weather/weather-data-services/boston,%20ma/metric#
 https://www.climate.gov/maps-data/dataset/past-weather-zip-code-data-table
 https://xmacis.rcc-acis.org/
+

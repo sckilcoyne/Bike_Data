@@ -1,7 +1,7 @@
 # cd Documents\GitHub\Bike_Data
 # docker build . -t tweet_bot
 
-FROM python:3.9-slim
+FROM python:3.10-slim
 
 COPY utils /utils
 COPY dataSources /dataSources
