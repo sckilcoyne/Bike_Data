@@ -19,5 +19,5 @@ sodapy==2.2.0
 beautifulsoup4==4.11.1
 lxml==4.9.2
 
-google-cloud-storage==2.6.0
+google-cloud-storage==2.7.0
 # pydrive2==1.14.0
