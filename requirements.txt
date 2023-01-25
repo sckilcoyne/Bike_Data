@@ -4,7 +4,7 @@
 
 tweepy==4.12.1
 
-pandas==1.5.2
+pandas==1.5.3
 numpy==1.24.1
 sodapy==2.2.0
 matplotlib==3.6.2
