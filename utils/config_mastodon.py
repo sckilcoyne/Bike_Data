@@ -22,42 +22,48 @@ logger = logging.getLogger(__name__)
 
 # Connection info
 apiBaseURL = 'https://better.boston'
-apiInfoFile = 'masto_clientcred.secret'
+apiInfoFile = 'secrets/masto_clientcred.secret'
 
 mastoPass = os.getenv('MASTO_PASSWORD')
 
 # %% Functions
 
+
 def create_app():
     '''Register app and create api file
+
+    Only needs to be run once
     '''
     Mastodon.create_app(
-        'pytooterapp',
-        api_base_url = apiBaseURL,
-        to_file = apiInfoFile
+        'bikedataapp',
+        api_base_url=apiBaseURL,
+        to_file=apiInfoFile
     )
+
 
 def login():
     '''Log into Mastodon
     '''
     mastodon = Mastodon(
-        client_id = apiInfoFile,
-        api_base_url = apiBaseURL
+        client_id=apiInfoFile,
+        api_base_url=apiBaseURL
     )
     mastodon.log_in(
         'bostonbikedata@gmail.com', mastoPass,
-        to_file = apiInfoFile
+        to_file=apiInfoFile
     )
+
 
 def create_api():
     '''Create API instance
     '''
     mastodon = Mastodon(
-        access_token = 'pytooter_usercred.secret',
-        api_base_url = 'https://mastodon.social'
+        access_token='pytooter_usercred.secret',
+        api_base_url='https://mastodon.social'
     )
 
     return mastodon
+
 
 def create_post(mastodon):
     '''Publish post to Mastodon
