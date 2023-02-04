@@ -5,20 +5,20 @@
 tweepy==4.12.1
 mastodon==1.6.3
 
-pandas==1.5.1
-numpy==1.23.4
+pandas==1.5.3
+numpy==1.24.1
 sodapy==2.2.0
-matplotlib==3.6.2
-scipy==1.9.3
+matplotlib==3.6.3
+scipy==1.10.0
 beautifulsoup4==4.11.1
-lxml==4.9.1
+lxml==4.9.2
 
-matplotlib==3.6.2
-plotly==5.11.0
+matplotlib==3.6.3
+plotly==5.13.0
 
 sodapy==2.2.0
 beautifulsoup4==4.11.1
-lxml==4.9.1
+lxml==4.9.2
 
-google-cloud-storage==2.6.0
+google-cloud-storage==2.7.0
 # pydrive2==1.14.0
