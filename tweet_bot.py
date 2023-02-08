@@ -69,7 +69,39 @@ def sleep_time(timeSleep=1*60*60):
 
 
 # %% Bot Functions
+def create_API_clients():
+    '''Create API clients to post
+    '''
+    try:
+        clientTwitter = configTwitter.create_client()
+        logger.info('Connected to Twitter')
+    except Exception as e:
+        logger.info('tweet_bot.create_API_clients(Twitter) raised exception. Continue on...', exc_info=e)
+        clientTwitter = None
 
+    try:
+        clientMastodon = configMastodon.create_client()
+        logger.info('Connected to Mastodon')
+    except Exception as e:
+        logger.info('tweet_bot.create_API_clients(Mastodon) raised exception. Continue on...', exc_info=e)
+        clientMastodon = None
+
+    return clientTwitter, clientMastodon
+
+def make_post(post, clientTwitter, clientMastodon):
+    '''Create posts for all services
+    '''
+    logger.info(post)
+
+    try:
+        clientTwitter.create_tweet(text=post)
+    except Exception as e:
+        logger.info('tweet_bot.make_post(Twitter) raised exception. Continue on...', exc_info=e)
+
+    try:
+        clientMastodon.status_post(post)
+    except Exception as e:
+        logger.info('tweet_bot.make_post(Mastodon) raised exception. Continue on...', exc_info=e)
 
 # %% Bot
 
@@ -84,8 +116,7 @@ def main():
     Retweeter: Automatically retweet CambridgeCrash when the crash involves a cyclist.
     """
     # Create API clients to post
-    clientTwitter = configTwitter.create_client()
-    clientMastodon = configMastodon.create_client()
+    clientTwitter, clientMastodon = create_API_clients()
 
     # Continuously scrape new data and post updates
     while True:
@@ -98,9 +129,7 @@ def main():
             if (postList is not None) and (len(postList) > 0):
                 logger.info('Broadway totem Posts:')
                 for post in postList:
-                    logger.info(post)
-                    clientTwitter.create_tweet(text=post)
-                    clientMastodon.status_post(post)
+                    make_post(post, clientTwitter, clientMastodon)
             else:
                 logger.info('No new posts from Broadway totem (tweet_bot>main)')
         except Exception as e:
@@ -114,9 +143,7 @@ def main():
             if (postList is not None) and (len(postList) > 0):
                 logger.info('NMDS-ms2soft Posts:')
                 for post in postList:
-                    logger.info(post)
-                    clientTwitter.create_tweet(text=post)
-                    clientMastodon.status_post(post)
+                    make_post(post, clientTwitter, clientMastodon)
             else:
                 logger.info('No new posts from NMDS-ms2soft (tweet_bot>main)')
         except Exception as e:
