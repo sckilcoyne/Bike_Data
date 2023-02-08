@@ -13,6 +13,7 @@ mastodon.py==1.8.0
 pandas==1.5.3
 numpy==1.24.1
 scipy==1.10.0
+python-dotenv=0.21.1
 
 # Plotting
 matplotlib==3.6.3

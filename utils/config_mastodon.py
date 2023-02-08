@@ -24,7 +24,10 @@ logger = logging.getLogger(__name__)
 apiBaseURL = 'https://better.boston'
 apiInfoFile = 'secrets/masto_clientcred.secret'
 
-mastoPass = os.getenv('MASTO_PASSWORD')
+# mastoPass = os.getenv('MASTO_PASSWORD')
+mastoKey = os.getenv('MAST_CLIENT_KEY')
+mastoSecret = os.getenv('MAST_CLIENT_SECRET')
+mastoToken = os.getenv('MAST_ACCESS_TOKEN')
 
 # %% Functions
 
@@ -41,31 +44,35 @@ def create_app():
     )
 
 
-def login():
-    '''Log into Mastodon
-    '''
-    mastodon = Mastodon(
-        client_id=apiInfoFile,
-        api_base_url=apiBaseURL
-    )
-    mastodon.log_in(
-        'bostonbikedata@gmail.com', mastoPass,
-        to_file=apiInfoFile
-    )
-
-
-def create_api():
+def create_client():
     '''Create API instance
     '''
+    # print(f'{mastoKey=}')
+    # print(f'{mastoSecret=}')
+    # print(f'{mastoToken=}')
+    # print(f'{apiBaseURL=}')
+
     mastodon = Mastodon(
-        access_token='pytooter_usercred.secret',
-        api_base_url='https://mastodon.social'
+        client_id=mastoKey,
+        client_secret=mastoSecret,
+        access_token=mastoToken,
+        api_base_url=apiBaseURL,
     )
 
     return mastodon
 
+# %% Run Script
 
-def create_post(mastodon):
-    '''Publish post to Mastodon
-    '''
-    mastodon.toot('Tooting from Python using #mastodonpy !')
+if __name__ == '__main__':
+    from dotenv import load_dotenv
+    load_dotenv(dotenv_path='secrets/bikebot-test.env')
+    mastoKey = os.getenv('MAST_CLIENT_KEY')
+    mastoSecret = os.getenv('MAST_CLIENT_SECRET')
+    mastoToken = os.getenv('MAST_ACCESS_TOKEN')
+
+    mastoAPI = create_client()
+
+    mastoAPI.status_post('Testing!', visibility='unlisted')
+
+    # print(mastoAPI)
+
