@@ -1,23 +1,29 @@
 # pip list
 # pip show
+
+# pip install -r /path/to/requirements.txt
+
 # https://realpython.com/twitter-bot-python-tweepy/#deploying-bots-to-a-server-using-docker
 
+# Posting
 tweepy==4.12.1
+mastodon.py==1.8.0
 
-pandas==1.5.2
-numpy==1.24.1
-sodapy==2.2.0
-matplotlib==3.6.2
+# General python
+pandas==1.5.3
+numpy==1.24.2
 scipy==1.10.0
-beautifulsoup4==4.11.1
-lxml==4.9.2
+python-dotenv==0.21.1
 
-matplotlib==3.6.2
-plotly==5.11.0
+# Plotting
+matplotlib==3.6.3
+plotly==5.13.0
 
+# Scraping
 sodapy==2.2.0
-beautifulsoup4==4.11.1
+beautifulsoup4==4.11.2
 lxml==4.9.2
 
+# Cloud Storage
 google-cloud-storage==2.7.0
 # pydrive2==1.14.0

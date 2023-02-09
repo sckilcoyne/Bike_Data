@@ -100,7 +100,7 @@ def main():
             upload_blob(source_file_name, destination_blob_name, bucket)
         else:
             logNote = f'{file} not modified recently, do not upload to GCS'
-            logger.info(logNote)
+            logger.debug(logNote)
 
 dataFolder = utils.get_data_folder()
 

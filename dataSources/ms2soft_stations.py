@@ -3,29 +3,38 @@ Database of MassDOT Non-Motorized Database System Stations
 
 To get [_id, ReportLocationSetId, LocationSetId]:
     In about:config
-        Set browser.link.open_newwindow to 1
+        Set browser.link.open_newwindow to 1 [from 3]
 
     Open Firefox developer tools
+        Ctrl + Shift + I
 
     On https://mhd.ms2soft.com/tdms.ui/nmds/analysis/Index?loc=mhd
         Search for correct station number
-        'Run Report' for 'Single Dat By Station'
+        'Run Report' for 'Single Day By Station'
 
     In Firefox Dev Tools Network tab:
-        For Get request, RMB > Copy Value > Copy as cURl
+        For Get request to mhd.ms2soft.com | subdocument | html
+        RMB > Copy Value > Copy URl
+
+    Run the get_params(URL) function
+
+To get GET request parameters
+    In Firefox Dev Tools Network tab:
+        For Get request to mhd.ms2soft.com | subdocument | html
+        RMB > Copy Value > Copy as cURl
 
     In VS Code:
         With cURL still in clipboard, in python > uncurl (pip install uncurl)
-        Find parameters in output and save to repsective station info below    
+        Find parameters in output and save to repsective station info below
 '''
 # %% Initialize
 import sys
 import os
 
-from datetime import date #datetime, timedelta
+from datetime import date  # datetime, timedelta
 
 # ?Add project folder to be able to import custom modules?
-sys.path.insert(0,os.getcwd())
+sys.path.insert(0, os.getcwd())
 
 # Import custom modules
 # pylint: disable=import-error, wrong-import-position
@@ -34,7 +43,7 @@ import utils.utilFuncs as utils
 
 # %% Station IDs
 stations = {
-    '4001':{ # Lex Minuteman, 2020
+    '4001': {  # Lex Minuteman, 2020
         'ID': '4001',
         'TweetName': 'Minuteman Bikeway (Lexington)',
         'Description': 'Minuteman Commuter Bikeway',
@@ -45,12 +54,12 @@ stations = {
         'Area Type': 'Urban',
         'Functional Class': 'Trail or Shared Use Path',
         'Qc Group': 'Basic QC',
-        '_id': 'b923623a-dd05-4c2f-9c28-630d88c8dc9a',
-        'ReportLocationSetId': 5341,
-        'LocationSetId': 2789244,
+        '_id': '3a9aabe1-228e-44f5-8e7c-ae0142356c5d',
+        'ReportLocationSetId': 5686,
+        'LocationSetId': 2980518,
         'FirstDate': date(2020, 8, 15),
-        },
-    '4004_SB': { # Medford Fellsway, 2021
+    },
+    '4004_SB': {  # Medford Fellsway, 2021
         'ID': '4004_SB',
         'TweetName': 'Fellwsay Rt28 SB over Mystic River',
         'Description': 'Fellwsay (Route 28)',
@@ -61,12 +70,12 @@ stations = {
         'Area Type': 'Urban',
         'Functional Class': 'Principal Arterial – Other',
         'Qc Group': 'Basic QC',
-        '_id': 'beac5471-54d6-4d5e-a7ae-7153fd7b3957',
-        'ReportLocationSetId': 5342,
-        'LocationSetId': 2789381,
+        '_id': '1bb96248-3421-4c26-a7bf-6d3f22a226ad',
+        'ReportLocationSetId': 5685,
+        'LocationSetId': 2980514,
         'FirstDate': date(2021, 7, 14),
-        },
-    '4004_NB': { # Medford Fellsway, 2021
+    },
+    '4004_NB': {  # Medford Fellsway, 2021
         'ID': '4004_NB',
         'TweetName': 'Fellwsay Rt28 NB over Mystic River',
         'Description': 'Fellwsay (Route 28)',
@@ -77,12 +86,12 @@ stations = {
         'Area Type': 'Urban',
         'Functional Class': 'Principal Arterial – Other',
         'Qc Group': 'Basic QC',
-        '_id': 'c1eecb32-0ac8-4779-8ceb-f54bdfb3dd23',
-        'ReportLocationSetId': 5377,
-        'LocationSetId': 2806069,
+        '_id': '7fae52ce-7455-4587-822f-c77d07ab8355',
+        'ReportLocationSetId': 5684,
+        'LocationSetId': 2980503,
         'FirstDate': date(2021, 7, 13),
-        },
-    '4005': { # Arlington Minuteman, 2022
+    },
+    '4005': {  # Arlington Minuteman, 2022
         'ID': '4005',
         'TweetName': 'Minuteman Bikeway (Arlington)',
         'Description': 'Minuteman Rail Trail',
@@ -93,12 +102,12 @@ stations = {
         'Area Type': 'Urban',
         'Functional Class': 'Trail or Shared Use Path',
         'Qc Group': '',
-        '_id': 'f8333dda-35bf-4f9c-aa92-4bcfb304fa1d',
-        'ReportLocationSetId': '5400',
-        'LocationSetId': '2814347',
+        '_id': '74347887-a0e5-406b-b616-e07e9595d68c',
+        'ReportLocationSetId': '5687',
+        'LocationSetId': '2980520',
         'FirstDate': date(2022, 9, 15),
-        },
-    '4006': { # Malden Northen Strand, 2022
+    },
+    '4006': {  # Malden Northen Strand, 2022
         'ID': '4006',
         'TweetName': 'Northern Strand Trail (Malden)',
         'Description': 'Northern Strand Trail',
@@ -109,12 +118,12 @@ stations = {
         'Area Type': 'Urban',
         'Functional Class': 'Trail or Shared Use Path',
         'Qc Group': '',
-        '_id': 'aa676b65-2d1f-4a23-b02b-d70370a93e01',
-        'ReportLocationSetId': '5398',
-        'LocationSetId': '2814270',
+        '_id': '504192f7-6eb6-413e-bd69-22cf383d6260',
+        'ReportLocationSetId': '5683',
+        'LocationSetId': '2980443',
         'FirstDate': date(2022, 9, 15),
-        },
-    }
+    },
+}
 
 # %% Save as pickle
 utils.pickle_dict(stations, 'data/ms2soft_stations')
@@ -122,7 +131,7 @@ utils.pickle_dict(stations, 'data/ms2soft_stations')
 # %% Other Stations
 
 stations_unused = {
-        '3001': { # Bruse Freeman, 2021
+    '3001': {  # Bruse Freeman, 2021
         'ID': '3001',
         'Description': 'Bruce Freeman Rail Trail',
         'Community': 'Acton',
@@ -134,8 +143,8 @@ stations_unused = {
         'Qc Group': 'Basic QC',
         'ReportLocationSetId': 5228,
         'LocationSetId': 2764341,
-        },
-        '4002_NB': { # Salem, 2021
+    },
+    '4002_NB': {  # Salem, 2021
         'ID': '4002_NB',
         'Description': 'Sgt James Ayube Memorial Drive',
         'Community': 'Salem',
@@ -147,8 +156,8 @@ stations_unused = {
         'Qc Group': 'Basic QC',
         'ReportLocationSetId': 5236,
         'LocationSetId': 2764364,
-        },
-    '4002_SB': { # Salem, 2021
+    },
+    '4002_SB': {  # Salem, 2021
         'ID': '4002_SB',
         'Description': 'Sgt James Ayube Memorial Drive',
         'Community': 'Salem',
@@ -160,8 +169,8 @@ stations_unused = {
         'Qc Group': 'Basic QC',
         'ReportLocationSetId': 5237,
         'LocationSetId': 2764366,
-        },
-    '4003_SB': { # Lowell, 2021
+    },
+    '4003_SB': {  # Lowell, 2021
         'ID': '4003_SB',
         'Description': 'Bridge Street',
         'Community': 'Lowell',
@@ -173,8 +182,8 @@ stations_unused = {
         'Qc Group': 'Default Group',
         'ReportLocationSetId': 5232,
         'LocationSetId': 2764353,
-        },
-    '4003_NB': { # Lowell, 2021
+    },
+    '4003_NB': {  # Lowell, 2021
         'ID': '4003_NB',
         'Description': 'Bridge Street',
         'Community': 'Lowell',
@@ -186,8 +195,8 @@ stations_unused = {
         'Qc Group': 'Default Group',
         'ReportLocationSetId': 5233,
         'LocationSetId': 2764356,
-        },
-    '4003_WB': { # Lowell, 2021
+    },
+    '4003_WB': {  # Lowell, 2021
         'ID': '4003_NB',
         'Description': 'Veterans of Foreign Wars Highway',
         'Community': 'Lowell',
@@ -199,8 +208,8 @@ stations_unused = {
         'Qc Group': 'Default Group',
         'ReportLocationSetId': 5234,
         'LocationSetId': 2764359,
-        },
-    '4003_EB': { # Lowell, 2021
+    },
+    '4003_EB': {  # Lowell, 2021
         'ID': '4003_EB',
         'Description': 'Veterans of Foreign Wars Highway',
         'Community': 'Lowell',
@@ -212,8 +221,8 @@ stations_unused = {
         'Qc Group': 'Default Group',
         'ReportLocationSetId': 5235,
         'LocationSetId': 2764362,
-        },
-        '5001_SB': { # Fall River, 2021
+    },
+    '5001_SB': {  # Fall River, 2021
         'ID': '5001_SB',
         'Description': 'Brayton Ave',
         'Community': 'Fall River',
@@ -225,8 +234,8 @@ stations_unused = {
         'Qc Group': 'Basic QC',
         'ReportLocationSetId': 5238,
         'LocationSetId': 2764372,
-        },
-    '5001_WB': { # Fall River, 2021
+    },
+    '5001_WB': {  # Fall River, 2021
         'ID': '5001_WB',
         'Description': 'Brayton Ave',
         'Community': 'Fall River',
@@ -238,8 +247,8 @@ stations_unused = {
         'Qc Group': 'Basic QC',
         'ReportLocationSetId': 5239,
         'LocationSetId': 2764376,
-        },
-    '5001_EB': { # Fall River, 2021
+    },
+    '5001_EB': {  # Fall River, 2021
         'ID': '5001_EB',
         'Description': 'Brayton Ave',
         'Community': 'Fall River',
@@ -251,8 +260,8 @@ stations_unused = {
         'Qc Group': 'Basic QC',
         'ReportLocationSetId': 5240,
         'LocationSetId': 2764378,
-        },
-    '5002_WB': { # Brockton, 2021
+    },
+    '5002_WB': {  # Brockton, 2021
         'ID': '5002_WB',
         'Description': 'Centre St',
         'Community': 'Brockton',
@@ -264,8 +273,8 @@ stations_unused = {
         'Qc Group': 'Basic QC',
         'ReportLocationSetId': 5241,
         'LocationSetId': 2764381,
-        },
-    '5002_EB': { # Brockton, 2021
+    },
+    '5002_EB': {  # Brockton, 2021
         'ID': '5002_EB',
         'Description': 'Centre St',
         'Community': 'Brockton',
@@ -277,8 +286,8 @@ stations_unused = {
         'Qc Group': 'Basic QC',
         'ReportLocationSetId': 5242,
         'LocationSetId': 2764385,
-        },
-    '6002_WB': { # Cambridge Longfellow, n/a
+    },
+    '6002_WB': {  # Cambridge Longfellow, n/a
         'ID': '6002_WB',
         'Description': 'Longfellow Bridge',
         'Community': 'Cambridge',
@@ -290,8 +299,8 @@ stations_unused = {
         'Qc Group': 'Basic QC',
         'ReportLocationSetId': 5243,
         'LocationSetId': 2764387,
-        },
-    '6002_EB': { # Cambridge Longfellow, 2021/ped only
+    },
+    '6002_EB': {  # Cambridge Longfellow, 2021/ped only
         'ID': '6002_EB',
         'Description': 'Longfellow Bridge',
         'Community': 'Cambridge',
@@ -303,8 +312,8 @@ stations_unused = {
         'Qc Group': 'Basic QC',
         'ReportLocationSetId': 5245,
         'LocationSetId': 2764393,
-        },
-        '6003_EB': { # Cambridge Charles River Dam, 2021
+    },
+    '6003_EB': {  # Cambridge Charles River Dam, 2021
         'ID': '6003_EB',
         'Description': 'Charles River Dam Rd',
         'Community': 'Boston',
@@ -316,7 +325,7 @@ stations_unused = {
         'Qc Group': 'Basic QC',
         'ReportLocationSetId': 5246,
         'LocationSetId': 2764396,
-        },
+    },
 }
 
 stations_removed = {
@@ -332,7 +341,7 @@ stations_removed = {
         'Qc Group': 'Basic QC',
         'ReportLocationSetId': 5247,
         'LocationSetId': 2764399,
-        },
+    },
     '6001_WB': {
         'ID': '6001_WB',
         'Description': 'Charles River Dam Rd',
@@ -345,5 +354,29 @@ stations_removed = {
         'Qc Group': 'Basic QC',
         'ReportLocationSetId': 5248,
         'LocationSetId': 2764401,
-        },
+    },
 }
+
+# %% Get Values
+
+
+def get_params(url):
+    ''' Get parameters for stations from URL
+    '''
+    # print(url)
+    # m.get_params('')
+
+    id_start = url.find('_id=')
+    id_end = url.find('&', id_start)
+
+    print(f'{url[id_start:id_end]}')
+
+    RLSid_start = url.find('&ReportLocationSetId=')
+    RLSid_end = url.find('&', RLSid_start + 1)
+
+    print(f'{url[RLSid_start:RLSid_end]}')
+
+    LSid_start = url.find('&LocationSetId=')
+    LSid_end = url.find('&', LSid_start + 1)
+
+    print(f'{url[LSid_start:LSid_end]}')
