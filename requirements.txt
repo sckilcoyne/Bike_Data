@@ -11,9 +11,9 @@ mastodon.py==1.8.0
 
 # General python
 pandas==1.5.3
-numpy==1.24.1
+numpy==1.24.2
 scipy==1.10.0
-python-dotenv=0.21.1
+python-dotenv==0.21.1
 
 # Plotting
 matplotlib==3.6.3
@@ -21,7 +21,7 @@ plotly==5.13.0
 
 # Scraping
 sodapy==2.2.0
-beautifulsoup4==4.11.1
+beautifulsoup4==4.11.2
 lxml==4.9.2
 
 # Cloud Storage
