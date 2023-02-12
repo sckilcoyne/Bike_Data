@@ -24,6 +24,11 @@ sodapy==2.2.0
 beautifulsoup4==4.11.2
 lxml==4.9.2
 
+# Weather - in progress
+zarr==2.14.0
+s3fs
+xarray
+
 # Cloud Storage
 google-cloud-storage==2.7.0
 # pydrive2==1.14.0

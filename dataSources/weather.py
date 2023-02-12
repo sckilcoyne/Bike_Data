@@ -8,17 +8,35 @@ Amazon NOAA Datasets
     https://registry.opendata.aws/collab/noaa/
 
 
-High Resolution Rapid Refresh Model (HRRR) 
+High Resolution Rapid Refresh Model (HRRR)
     https://rapidrefresh.noaa.gov/hrrr/
 
-    The HRRR Zarr Archive Managed by MesoWest by Taylor Gowan 
+    The HRRR Zarr Archive Managed by MesoWest by Taylor Gowan
         https://mesowest.utah.edu/html/hrrr/
 
-    HRRR-B Python package: download and read HRRR grib2 files by Brian Blaylock 
+    HRRR-B Python package: download and read HRRR grib2 files by Brian Blaylock
         https://github.com/blaylockbk/Herbie
 
-    Using Cloud Computing to Analyze Model Output Archived in Zarr Format 
+    Using Cloud Computing to Analyze Model Output Archived in Zarr Format
         https://journals.ametsoc.org/view/journals/atot/39/4/JTECH-D-21-0106.1.xml
+'''
+import zarr
+import s3fs
+import xarray 
+
+zarr_bucket = 'hrrrzarr'
+
+s3 = s3fs.S3FileSystem(anon=True)
+def lookup(path):
+    return s3fs.S3Map(path, s3=s3)
+
+path = "hrrrzarr/sfc/20210101/20210101_00z_anl.zarr/surface/TMP" 
+ds = xarray.open_mfdataset([lookup(path), lookup(f"{path}/surface")], 
+                            engine="zarr") 
+
+ds.TMP.plot()
+
+# %% Google Cloud
 '''
 from google.cloud import storage
 
@@ -51,6 +69,9 @@ def download_public_file(bucket_name, source_blob_name, destination_file_name):
             source_blob_name, bucket.name, destination_file_name
         )
     )
+'''
+
+
 
 if __name__ == '__main__':
     print('WEATHER')
