@@ -274,7 +274,7 @@ def format_tweet(broadwayDailyTotals, updateDaily, records):
     """
     tweetList = []
 
-    localeStr = 'Broadway in Cambridge (Eco-Totem)\n'
+    localeStr = 'Broadway in #CambMA (Eco-Totem)\n'
 
     for _, day in updateDaily.iterrows():
         total = day['Total']

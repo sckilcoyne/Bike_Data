@@ -22,14 +22,8 @@ logger = logging.getLogger(__name__)
 
 # %% Creat Client
 def create_client():
-    """[summary]
-
-    Raises:
-        e: [description]
-
-    Returns:
-        [type]: [description]
-    """
+    '''Create Twitter API client
+    '''
     consumerKey = os.getenv('TWTR_CONSUMER_KEY')
     consumerSecret = os.getenv('TWTR_CONSUMER_SECRET')
     accessToken = os.getenv('TWTR_ACCESS_TOKEN')
@@ -37,8 +31,10 @@ def create_client():
     bearerToken = os.getenv('TWTR_BEARER_TOKEN')
 
     if None in [consumerKey, consumerSecret, accessToken, accessTokenSecret, bearerToken]:
-        logger.error('Failed to properly load env variables')
+        logger.error('Failed to properly load Twitter env variables')
         raise Exception('Env Variable Error')
+
+    logger.info('Twitter consumer key: %s', consumerKey)
 
     client = tweepy.Client(bearer_token=bearerToken,
                            consumer_key=consumerKey,
@@ -50,9 +46,9 @@ def create_client():
         user = client.get_user(username='bostonbikedata')
         logger.info(user)
     except Exception as e:
-        logger.error("Error creating API", exc_info=True)
+        logger.error("Error creating Twitter API", exc_info=True)
         raise e
-    logger.info("API created")
+    logger.info("Twitter API client created")
     return client
 
 # %% Run as Script
