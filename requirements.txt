@@ -16,7 +16,7 @@ scipy==1.10.1
 python-dotenv==0.21.1
 
 # Plotting
-matplotlib==3.6.3
+matplotlib==3.7.0
 plotly==5.13.0
 
 # Scraping
