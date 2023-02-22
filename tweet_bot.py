@@ -32,6 +32,7 @@ logging.config.fileConfig('log.conf', disable_existing_loggers=False)
 logger = logging.getLogger(__name__)
 logger.debug("Logging is configured.")
 
+# Cloud storage location
 bucket_name = os.getenv('GCS_BUCKET_NAME')
 logger.info('bucket_name: %s', bucket_name)
 
@@ -39,7 +40,7 @@ logger.info('bucket_name: %s', bucket_name)
 
 
 def sleep_till(timeSleep=8):
-    """_summary_
+    """Sleep until given hour
 
     Args:
         timeSleep (int, optional): Hour to sleep until. Defaults to 8.
@@ -72,14 +73,16 @@ def sleep_time(timeSleep=1*60*60):
 def create_API_clients():
     '''Create API clients to post
     '''
-    clientTwitter = create_twitter_client
-    clientMastodon = create_mastodon_client
+    logger.info('Creating API Clients')
+    clientTwitter = create_twitter_client()
+    clientMastodon = create_mastodon_client()
 
     return clientTwitter, clientMastodon
 
 def create_twitter_client():
     '''Create twitter API
     '''
+    logger.info('Attempting to connect to Twitter')
     try:
         clientTwitter = configTwitter.create_client()
         logger.info('Connected to Twitter')
@@ -92,6 +95,7 @@ def create_twitter_client():
 def create_mastodon_client():
     '''Create Mastodon API
     '''
+    logger.info('Attempting to connect to Mastodon')
     try:
         clientMastodon = configMastodon.create_client()
         logger.info('Connected to Mastodon')
@@ -101,27 +105,65 @@ def create_mastodon_client():
 
     return clientMastodon
 
-def make_post(post, clientTwitter, clientMastodon):
+def make_post(post, clientTwitter, clientMastodon, service):
     '''Create posts for all services
     '''
     logger.info(post)
+    logger.info('Service: %s', service)
 
-    if clientTwitter is None:
-        clientTwitter = create_twitter_client
-    if clientMastodon is None:
-        clientMastodon = create_mastodon_client
+    nopost_twitter = None
+    nopost_mastodon = None
 
-    try:
-        clientTwitter.create_tweet(text=post)
-    except Exception as e:
-        logger.info('tweet_bot.make_post(Twitter) raised exception. Continue on...', exc_info=e)
+    # Twitter
+    if service in ['all', 'twitter']:
+        if clientTwitter is None:
+            logger.info('Not connected to Twitter, trying to connect')
+            clientTwitter = create_twitter_client()
+        try:
+            clientTwitter.create_tweet(text=post)
+            logger.info('Tweeted')
+        except Exception as e:
+            clientTwitter = None
+            nopost_twitter = post
+            logger.info('tweet_bot.make_post(Twitter) raised exception. Continue on...',
+                            exc_info=e)
 
-    try:
-        clientMastodon.status_post(post)
-    except Exception as e:
-        logger.info('tweet_bot.make_post(Mastodon) raised exception. Continue on...', exc_info=e)
+    # Mastodon
+    if service in ['all', 'mastodon']:
+        if clientMastodon is None:
+            logger.info('Not connected to Mastodon, trying to connect')
+            clientMastodon = create_mastodon_client()
+        try:
+            clientMastodon.status_post(post)
+            logger.info('Tooted')
+        except Exception as e:
+            clientMastodon = None
+            nopost_mastodon = post
+            logger.info('tweet_bot.make_post(Mastodon) raised exception. Continue on...',
+                            exc_info=e)
 
-    return clientTwitter, clientMastodon
+    return clientTwitter, clientMastodon, nopost_twitter, nopost_mastodon
+
+def make_posts(postList, clientTwitter, clientMastodon, service='all'):
+    '''Create posts for each entry in list of posts
+
+    postList: List with posts to be made
+    service: Which post service to send to
+        all: Try every posting serivce
+        Other options: ['twitter', 'mastodon']
+    '''
+    retryTwitter = []
+    retryMastodon = []
+
+    for post in postList:
+        clientTwitter, clientMastodon, nopost_twitter, nopost_mastodon = make_post(
+                                                    post, clientTwitter, clientMastodon, service)
+        if nopost_twitter is not None:
+            retryTwitter.append(nopost_twitter)
+        if nopost_mastodon is not None:
+            retryMastodon.append(nopost_mastodon)
+    
+    return clientTwitter, clientMastodon, retryTwitter, retryMastodon
 
 # %% Bot
 
@@ -138,8 +180,26 @@ def main():
     # Create API clients to post
     clientTwitter, clientMastodon = create_API_clients()
 
+    # Make empty lists to retry posting
+    retryTwitterR = []
+    retryTwitterB = []
+    retryTwitterM = []
+    retryMastodonR = []
+    retryMastodonB = []
+    retryMastodonM = []
+
     # Continuously scrape new data and post updates
     while True:
+        now = datetime.now().strftime('%H:%M:%S')
+        logger.info('\n------------------------------------------\nLook for new data at %s', now)
+
+        # Retry posting
+        retryTwitterR = retryTwitterR + retryTwitterB + retryTwitterM
+        retryMastodonR = retryMastodonR + retryMastodonB + retryMastodonM
+        clientTwitter, _, retryTwitterR, _ = make_posts(
+                                                retryTwitterR, clientTwitter, None, 'twitter')
+        _, clientMastodon, _, retryMastodonR = make_posts(
+                                                retryMastodonR, None, clientMastodon, 'mastodon')
 
         # Broadway totem
         try:
@@ -148,8 +208,9 @@ def main():
 
             if (postList is not None) and (len(postList) > 0):
                 logger.info('Broadway totem Posts:')
-                for post in postList:
-                    clientTwitter, clientMastodon = make_post(post, clientTwitter, clientMastodon)
+                clientTwitter, clientMastodon, retryTwitterB, retryMastodonB = make_posts(
+                                                    postList, clientTwitter, clientMastodon, 'all')
+
             else:
                 logger.info('No new posts from Broadway totem (tweet_bot>main)')
         except Exception as e:
@@ -162,8 +223,8 @@ def main():
 
             if (postList is not None) and (len(postList) > 0):
                 logger.info('NMDS-ms2soft Posts:')
-                for post in postList:
-                    clientTwitter, clientMastodon = make_post(post, clientTwitter, clientMastodon)
+                clientTwitter, clientMastodon, retryTwitterM, retryMastodonM = make_posts(
+                                                    postList, clientTwitter, clientMastodon, 'all')
             else:
                 logger.info('No new posts from NMDS-ms2soft (tweet_bot>main)')
         except Exception as e:
@@ -172,6 +233,10 @@ def main():
 
         # Retweet
         try:
+            if clientTwitter is None:
+                logger.info('Not connected to Twitter, trying to connect')
+                clientTwitter = create_twitter_client()
+
             retweeter.main(clientTwitter)
         except Exception as e:
             logger.info('tweet_bot>retweeter.main() raised exception. Continue on...', exc_info=e)
@@ -181,7 +246,8 @@ def main():
         try:
             google_cloud.main()
         except Exception as e:
-            logger.info('tweet_bot>google_cloud.main()  raised exception. Continue on...', exc_info=e)
+            logger.info('tweet_bot>google_cloud.main() raised exception. Continue on...',
+                            exc_info=e)
 
         # Time for a nap
         # Check for new data every hour between 8am and 8pm

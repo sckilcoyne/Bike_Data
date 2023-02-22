@@ -90,7 +90,7 @@ def tweet_note(newData, dailyTotals, records=None):
         weekPart = (weekdays, 'weekdays')
     else:
         weekPart = (weekends, 'weekends')
-    
+
     months = [['September', 'October', 'November'],
                 ['December', 'Janurary', 'February'],
                 ['March', 'April', 'May'],

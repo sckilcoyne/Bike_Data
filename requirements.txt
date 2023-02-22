@@ -12,11 +12,11 @@ mastodon.py==1.8.0
 # General python
 pandas==1.5.3
 numpy==1.24.2
-scipy==1.10.0
+scipy==1.10.1
 python-dotenv==0.21.1
 
 # Plotting
-matplotlib==3.6.3
+matplotlib==3.7.0
 plotly==5.13.0
 
 # Scraping

@@ -45,12 +45,18 @@ def create_app():
 
 
 def create_client():
-    '''Create API instance
+    '''Create Mastodon API instance
     '''
     # print(f'{mastoKey=}')
     # print(f'{mastoSecret=}')
     # print(f'{mastoToken=}')
     # print(f'{apiBaseURL=}')
+
+    if None in [mastoKey, mastoSecret, mastoToken, apiBaseURL]:
+        logger.error('Failed to properly load Mastodon env variables')
+        raise Exception('Env Variable Error')
+
+    logger.info('Mastodon key: %s', mastoKey)
 
     mastodon = Mastodon(
         client_id=mastoKey,
@@ -58,6 +64,8 @@ def create_client():
         access_token=mastoToken,
         api_base_url=apiBaseURL,
     )
+
+    logger.info('Mastodon API client created:\n %s', mastodon)
 
     return mastodon
 
@@ -75,4 +83,3 @@ if __name__ == '__main__':
     mastoAPI.status_post('Testing!', visibility='unlisted')
 
     # print(mastoAPI)
-
