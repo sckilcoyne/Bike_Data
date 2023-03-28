@@ -129,8 +129,9 @@ def format2(filename, metaData):
         dfTable = dfTable.iloc[4:]
 
         # Remove separating column
-        dfTable = dfTable.drop(
-            ['Unnamed: 3', 'Unnamed: 4', 'Unnamed: 9', 'Unnamed: 13'], axis=1)
+        # dfTable = dfTable.drop(
+        #     ['Unnamed: 3', 'Unnamed: 4', 'Unnamed: 9', 'Unnamed: 13'], axis=1)
+        dfTable = dfTable.dropna(axis=1)
 
         # Move PM table below AM table
         dfAM = dfTable.iloc[:, :8]
@@ -146,30 +147,30 @@ def format2(filename, metaData):
         if len(dates) == 1:
             dfTable['Date'] = dates[0]
         elif len(dates) > 1:
+            date = dates[np.mod(
+                np.add(int(pageNum), -1), len(dates))]
+            print(f'{pageNum=}   |   {date=}')
+            dfTable['Date'] = date
 
-        print('pause')
+        # Add Datetime column
+        dfTable['Datetime'] = pd.to_datetime(
+            dfTable['Date'] + ' ' + dfTable['Time'])
 
-    return df
+        # Add direction and location
+        dfTable['Direction'] = direction
+        dfTable['Location'] = location
+
+        df = pd.concat([df, dfTable])
+
+    # Create a simple dataframe with common headers between report types
+    dfSimple = df[['Datetime', 'Location', 'Direction',
+                   'Bicycles', 'Cars & light Goods', 'Total']].copy()
+    dfSimple.columns = commonHeaders
+
+    return dfSimple
 
 # %% Run Script
 
-# df1 = pd.DataFrame()
-# for pdf in pdf1:
-#     # print(pdf)
-#     for direction in pdf1[pdf]:
-#         # print(direction)
-#         # print(pdf_2022[pdf][direction])
-#         pdf_file = f'{folder}{pdf}{ext}'
-#         dfAdd = format1(pdf_file, direction, pdf1[pdf][direction])
-#         df1 = pd.concat([df1, dfAdd])
-
-
-# df2 = pd.DataFrame()
-# for pdf in pdf2:
-#     for direction in pdf2[pdf]:
-#         pdf_file = f'{folder}{pdf}{ext}'
-#         dfAdd = format2(pdf_file, direction, pdf2[pdf][direction])
-#         df2 = pd.concat([df2, dfAdd])
 
 def main():
     pdfList = glob.glob(f'{folder}*{ext}')
