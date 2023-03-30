@@ -9,12 +9,12 @@ from tabula import read_pdf
 import numpy as np
 import pandas as pd
 import glob
-import plotly.graph_objects as go
+# import plotly.graph_objects as go
 import matplotlib.pyplot as plt
-from scipy import stats
+# from scipy import stats
 import matplotlib.dates as mdates
 import matplotlib.ticker as mtick
-import matplotlib as mpl
+# import matplotlib as mpl
 
 # %% Files
 
@@ -214,6 +214,8 @@ dfBluebikes['Bike_Growth'] = 100 * \
     dfBluebikes['Rides'] / dfBluebikes['Rides'][0] - 100
 dfBluebikes['Date'] = pd.to_datetime(dfBluebikes['Date'])
 
+dfBluebikes['Bike_Growth'].plot()
+
 # %% Rush Hour
 dfHourly = df.groupby([df.Datetime.dt.hour])[[
     'Bicycles', 'Cars', 'Total']].sum()
@@ -229,7 +231,7 @@ dfRush = df[(df.Datetime.dt.hour == 8) | (df.Datetime.dt.hour == 17)]
 # %% Summary Data
 
 dfData = df.copy()
-dfData = dfRush.copy()
+# dfData = dfRush.copy()
 
 dfDate = dfData.groupby(['Location', dfData.Datetime.dt.date])[[
     'Bicycles', 'Cars', 'Total']].sum()
@@ -252,15 +254,27 @@ def norm2first(data):
     return data
 
 
-dfDate = dfDate.groupby(['Location']).apply(norm2first)
+dfDate = dfDate.groupby(['Location'], group_keys=False).apply(norm2first)
 
+meanCountDate = dfDate.groupby(dfDate.Datetime.dt.month)['Datetime'].mean()
+
+# Changes in ridership relative to initial count day
 growthMean = pd.concat((dfDate.groupby(dfDate.Datetime.dt.month)['Bike_Growth'].mean(
-), dfDate.groupby(dfDate.Datetime.dt.month)['Datetime'].mean()), axis=1)
+    ), meanCountDate), axis=1)
 growthMean.index.names = ['Idx']
 growthMean.sort_values('Datetime', inplace=True, ignore_index=True)
 
+countdatesBluebikes = dfBluebikes[dfBluebikes['Date'].isin(dfDate['Datetime'].unique())]
+countdatesBluebikes = countdatesBluebikes.groupby(countdatesBluebikes.Date.dt.month)['Bike_Growth'].mean()
+countdatesBluebikes = pd.concat((countdatesBluebikes, meanCountDate), axis=1)
+countdatesBluebikes.sort_values('Datetime', inplace=True, ignore_index=True)
+
+growthMean['Bluebikes'] = countdatesBluebikes['Bike_Growth']
+growthMean['Adjusted_Growth'] = (((growthMean['Bike_Growth'] + 100)/100) / ((growthMean['Bluebikes'] + 100)/100) * 100 ) - 100
+
+# Bike mode share by count group
 shareMean = pd.concat((dfDate.groupby(dfDate.Datetime.dt.month)['Bike_Car_Share'].mean(
-), dfDate.groupby(dfDate.Datetime.dt.month)['Datetime'].mean()), axis=1)
+    ), dfDate.groupby(dfDate.Datetime.dt.month)['Datetime'].mean()), axis=1)
 shareMean.index.names = ['Idx']
 shareMean.sort_values('Datetime', inplace=True, ignore_index=True)
 
@@ -272,11 +286,6 @@ dateMax = mdates.date2num(dfDate.Datetime.max())
 fig = plt.figure(figsize=(15, 9), dpi=600)
 ax = fig.add_subplot(1, 1, 1)
 ax.yaxis.set_major_formatter(mtick.PercentFormatter())
-
-# Linear regression of data
-# x = mdates.date2num(dfDate['Datetime'])
-# m, b = np.polyfit(x, dfDate['Bike_Car_Share'], 1)
-# plt.plot(x, m*x+b)
 
 # Plot mean growth numbers
 plt.plot(shareMean['Datetime'], shareMean['Bike_Car_Share'],
@@ -321,13 +330,6 @@ fig = plt.figure(figsize=(15, 9), dpi=600)
 ax = fig.add_subplot(1, 1, 1)
 ax.yaxis.set_major_formatter(mtick.PercentFormatter())
 
-# Linear regression of data
-# x = mdates.date2num(dfDate['Datetime'])
-# m, b = np.polyfit(x, dfDate['Bike_Growth'], 1)
-# growthPercent = (m*dateMax+b) - (m*dateMin+b)
-# print(f'Bike volume growth: {growthPercent:.0f}%')
-# plt.plot(x, m*x+b, color='orange')
-
 # Plot mean growth numbers
 plt.plot(growthMean['Datetime'], growthMean['Bike_Growth'],
          color='red', marker='o', markersize=10, markerfacecolor='none', markeredgecolor='r',
@@ -359,3 +361,46 @@ plt.title('Garden St. project implemented in Novemeber 2022')
 ax.text(0.1, 0.01, '@BostonBikeData', transform=ax.transAxes)
 plt.show()
 fig.savefig('bike_growth.png')
+
+# %% Plot bike growth over time, relative to Bluebikes
+fig = plt.figure(figsize=(15, 9), dpi=600)
+ax = fig.add_subplot(1, 1, 1)
+ax.yaxis.set_major_formatter(mtick.PercentFormatter())
+
+# Plot mean growth numbers
+plt.plot(growthMean['Datetime'], growthMean['Bike_Growth'],
+         color='red', marker='o', markersize=10, markerfacecolor='none', markeredgecolor='r',
+         label='Month Average')
+plt.plot(growthMean['Datetime'], growthMean['Adjusted_Growth'],
+         color='green', marker='o', markersize=10, markerfacecolor='none', markeredgecolor='g',
+         label='Month Average adjusted for Bluebikes Ridership')
+
+
+# Plot Bluebikes data
+plt.plot(dfBluebikes['Date'], dfBluebikes['Bike_Growth'],
+          label='Cambridge BlueBikes Rides', color='blue')
+
+# Plot each day's count data
+for loc in dfDate.groupby('Location'):
+    plt.scatter(loc[1]['Datetime'], loc[1]
+                ['Bike_Growth'], label=loc[0], marker='.')
+
+
+ax.text(
+    0.4, 0.95, f'Bike volume increased by {growthMean.Bike_Growth.max():.0f}%',
+    transform=ax.transAxes, ha='left')
+ax.text(
+    0.4, 0.9, f'Bike volume increased by {growthMean.Adjusted_Growth.max():.0f}% relative to Bluebikes useage in Cambridge',
+    transform=ax.transAxes, ha='left')
+
+
+plt.legend()
+plt.xlabel('Count Date')
+plt.ylabel('Bike Growth relative to BlueBikes useage')
+plt.ylim([-100, 1100])
+plt.suptitle(
+    'Bike volume relative to first count on streets near Garden Street Safety Improvement Project, adjusted for BlueBikes ridership')
+plt.title('Garden St. project implemented in Novemeber 2022')
+ax.text(0.1, 0.01, '@BostonBikeData', transform=ax.transAxes)
+plt.show()
+fig.savefig('bike_growth_relativeBB.png')
