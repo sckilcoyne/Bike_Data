@@ -14,6 +14,7 @@ import matplotlib.pyplot as plt
 from scipy import stats
 import matplotlib.dates as mdates
 import matplotlib.ticker as mtick
+import matplotlib as mpl
 
 # %% Files
 
@@ -210,14 +211,30 @@ df.to_csv('all_garden_data.csv')
 # %% Import Data
 dfBluebikes = pd.read_csv('bluebikes.txt', header=0)
 dfBluebikes['Bike_Growth'] = 100 * \
-    dfBluebikes['Rides'] / dfBluebikes['Rides'][0]
+    dfBluebikes['Rides'] / dfBluebikes['Rides'][0] - 100
 dfBluebikes['Date'] = pd.to_datetime(dfBluebikes['Date'])
+
+# %% Rush Hour
+dfHourly = df.groupby([df.Datetime.dt.hour])[[
+    'Bicycles', 'Cars', 'Total']].sum()
+
+dfHourly = dfHourly / dfHourly.sum()
+
+dfHourly.plot(grid=True)
+
+dfHourly.sort_values('Bicycles', ascending=False).head(2)
+
+dfRush = df[(df.Datetime.dt.hour == 8) | (df.Datetime.dt.hour == 17)]
 
 # %% Summary Data
 
-dfDate = df.groupby(['Location', df.Datetime.dt.date])[[
+dfData = df.copy()
+dfData = dfRush.copy()
+
+dfDate = dfData.groupby(['Location', dfData.Datetime.dt.date])[[
     'Bicycles', 'Cars', 'Total']].sum()
 dfDate = dfDate.reset_index(level=1)
+dfDate['Datetime'] = pd.to_datetime(dfDate['Datetime'])
 
 dfDate['Bike_Car_Share'] = dfDate['Bicycles'] / dfDate['Cars'] * 100
 dfDate['Bike_Total_Share'] = dfDate['Bicycles'] / dfDate['Cars'] * 100
@@ -226,40 +243,67 @@ dfDate['Bike_Total_Share'] = dfDate['Bicycles'] / dfDate['Cars'] * 100
 dfDate = dfDate.sort_values(by='Datetime')
 
 
-def norm2first(df):
+def norm2first(data):
     # firstdate = df.Datetime[0]
     # firstDateBike = df.Bicycles[0]
 
-    df['Bike_Growth'] = df['Bicycles'] / df['Bicycles'][0] * 100
+    data['Bike_Growth'] = data['Bicycles'] / data['Bicycles'][0] * 100 - 100
 
-    return df
+    return data
 
 
 dfDate = dfDate.groupby(['Location']).apply(norm2first)
 
+growthMean = pd.concat((dfDate.groupby(dfDate.Datetime.dt.month)['Bike_Growth'].mean(
+), dfDate.groupby(dfDate.Datetime.dt.month)['Datetime'].mean()), axis=1)
+growthMean.index.names = ['Idx']
+growthMean.sort_values('Datetime', inplace=True, ignore_index=True)
+
+shareMean = pd.concat((dfDate.groupby(dfDate.Datetime.dt.month)['Bike_Car_Share'].mean(
+), dfDate.groupby(dfDate.Datetime.dt.month)['Datetime'].mean()), axis=1)
+shareMean.index.names = ['Idx']
+shareMean.sort_values('Datetime', inplace=True, ignore_index=True)
+
 dateMin = mdates.date2num(dfDate.Datetime.min())
 dateMax = mdates.date2num(dfDate.Datetime.max())
 
-# Plot mode share over time
+
+# %% Plot mode share over time
 fig = plt.figure(figsize=(15, 9), dpi=600)
 ax = fig.add_subplot(1, 1, 1)
 ax.yaxis.set_major_formatter(mtick.PercentFormatter())
 
-x = mdates.date2num(dfDate['Datetime'])
-m, b = np.polyfit(x, dfDate['Bike_Car_Share'], 1)
-plt.plot(x, m*x+b)
+# Linear regression of data
+# x = mdates.date2num(dfDate['Datetime'])
+# m, b = np.polyfit(x, dfDate['Bike_Car_Share'], 1)
+# plt.plot(x, m*x+b)
+
+# Plot mean growth numbers
+plt.plot(shareMean['Datetime'], shareMean['Bike_Car_Share'],
+         color='red', marker='o', markersize=10, markerfacecolor='none', markeredgecolor='r',
+         label='Month Average')
 
 for loc in dfDate.groupby('Location'):
-    plt.scatter(loc[1]['Datetime'], loc[1]
-                ['Bike_Car_Share'], label=loc[0], marker='.')
+    ax.scatter(loc[1]['Datetime'], loc[1]
+               ['Bike_Car_Share'], label=loc[0], marker='.')
 
-sharePoint = (m*dateMax+b) - (m*dateMin+b)
-sharePercentage = 100 * (m*dateMax+b) / (m*dateMin+b)
+# Annotate
+shareMax = shareMean['Bike_Car_Share'].max()
+shareInit = shareMean[shareMean['Datetime'] ==
+                      shareMean['Datetime'].min()]['Bike_Car_Share'].iloc[0]
+sharePoint = shareMax - shareInit
+sharePercentage = 100 * shareMax / shareInit
 print(f'Bike Mode Share percentage point increase: {sharePoint:0.1f}')
 print(f'Bike Mode Share percentage increase: {sharePercentage:0.0f}%')
 ax.text(
     0.5, 0.9, f'Bike mode share increased by {sharePercentage:0.0f}%\nand {sharePoint:0.1f} percentage points',
     transform=ax.transAxes, ha='center')
+
+# Plot Bluebikes data
+# axTwin = ax.twinx()
+# axTwin.plot(dfBluebikes['Date'], dfBluebikes['Bike_Growth'],)
+#          # label='Cambridge BlueBikes Rides', color='blue')
+# axTwin.set_ylim(-100,100)
 
 plt.legend()
 plt.xlabel('Count Date')
@@ -272,31 +316,43 @@ plt.show()
 fig.savefig('bike_modeshare.png')
 
 
-# Plot bike growth over time
+# %% Plot bike growth over time
 fig = plt.figure(figsize=(15, 9), dpi=600)
 ax = fig.add_subplot(1, 1, 1)
 ax.yaxis.set_major_formatter(mtick.PercentFormatter())
 
-x = mdates.date2num(dfDate['Datetime'])
-m, b = np.polyfit(x, dfDate['Bike_Growth'], 1)
+# Linear regression of data
+# x = mdates.date2num(dfDate['Datetime'])
+# m, b = np.polyfit(x, dfDate['Bike_Growth'], 1)
+# growthPercent = (m*dateMax+b) - (m*dateMin+b)
+# print(f'Bike volume growth: {growthPercent:.0f}%')
+# plt.plot(x, m*x+b, color='orange')
 
+# Plot mean growth numbers
+plt.plot(growthMean['Datetime'], growthMean['Bike_Growth'],
+         color='red', marker='o', markersize=10, markerfacecolor='none', markeredgecolor='r',
+         label='Month Average')
+
+
+# Plot Bluebikes data
 plt.plot(dfBluebikes['Date'], dfBluebikes['Bike_Growth'],
-         label='Cambridge BlueBikes Rides')
+         label='Cambridge BlueBikes Rides', color='blue')
 
+# Plot each day's count data
 for loc in dfDate.groupby('Location'):
     plt.scatter(loc[1]['Datetime'], loc[1]
                 ['Bike_Growth'], label=loc[0], marker='.')
 
-growthPercent = (m*dateMax+b) - (m*dateMin+b)
-print(f'Bike volume growth: {growthPercent:.0f}%')
+
 ax.text(
-    0.5, 0.9, f'Bike volume increased by {growthPercent:.0f}%',
+    0.5, 0.9, f'Bike volume increased by {growthMean.Bike_Growth.max():.0f}%',
     transform=ax.transAxes, ha='center')
 
-plt.plot(x, m*x+b)
+
 plt.legend()
 plt.xlabel('Count Date')
 plt.ylabel('Bike Growth')
+plt.ylim([-100, 850])
 plt.suptitle(
     'Bike volume relative to first count on streets near Garden Street Safety Improvement Project')
 plt.title('Garden St. project implemented in Novemeber 2022')
