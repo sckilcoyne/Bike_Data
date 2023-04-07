@@ -11,7 +11,7 @@ import pandas as pd
 import glob
 # import plotly.graph_objects as go
 import matplotlib.pyplot as plt
-# from scipy import stats
+from scipy import stats
 import matplotlib.dates as mdates
 import matplotlib.ticker as mtick
 # import matplotlib as mpl
@@ -235,7 +235,8 @@ dfData = df.copy()
 
 dfDate = dfData.groupby(['Location', dfData.Datetime.dt.date])[[
     'Bicycles', 'Cars', 'Total']].sum()
-dfDate = dfDate.reset_index(level=1)
+# dfDate = dfDate.reset_index(level=1)
+dfDate = dfDate.reset_index()
 dfDate['Datetime'] = pd.to_datetime(dfDate['Datetime'])
 
 dfDate['Bike_Car_Share'] = dfDate['Bicycles'] / dfDate['Cars'] * 100
@@ -249,7 +250,9 @@ def norm2first(data):
     # firstdate = df.Datetime[0]
     # firstDateBike = df.Bicycles[0]
 
-    data['Bike_Growth'] = data['Bicycles'] / data['Bicycles'][0] * 100 - 100
+    # data['Bike_Growth'] = data['Bicycles'] / data['Bicycles'][0] * 100 - 100
+    data['Bike_Growth_100'] = data['Bicycles'] / data['Bicycles'].iloc[0] * 100
+    data['Bike_Growth_0'] = data['Bicycles'] / data['Bicycles'].iloc[0] * 100 - 100
 
     return data
 
@@ -259,9 +262,13 @@ dfDate = dfDate.groupby(['Location'], group_keys=False).apply(norm2first)
 meanCountDate = dfDate.groupby(dfDate.Datetime.dt.month)['Datetime'].mean()
 
 # Changes in ridership relative to initial count day
-growthMean = pd.concat((dfDate.groupby(dfDate.Datetime.dt.month)['Bike_Growth'].mean(
+growthMean = pd.concat((dfDate.groupby(dfDate.Datetime.dt.month)['Bike_Growth_0'].mean(
     ), meanCountDate), axis=1)
 growthMean.index.names = ['Idx']
+
+growthMean['growth_median'] = dfDate.groupby(dfDate.Datetime.dt.month)['Bike_Growth_0'].median()
+growthMean['growth_geometricMean'] = dfDate.groupby(dfDate.Datetime.dt.month)['Bike_Growth_100'].transform(stats.gmean)
+
 growthMean.sort_values('Datetime', inplace=True, ignore_index=True)
 
 countdatesBluebikes = dfBluebikes[dfBluebikes['Date'].isin(dfDate['Datetime'].unique())]
@@ -270,7 +277,9 @@ countdatesBluebikes = pd.concat((countdatesBluebikes, meanCountDate), axis=1)
 countdatesBluebikes.sort_values('Datetime', inplace=True, ignore_index=True)
 
 growthMean['Bluebikes'] = countdatesBluebikes['Bike_Growth']
-growthMean['Adjusted_Growth'] = (((growthMean['Bike_Growth'] + 100)/100) / ((growthMean['Bluebikes'] + 100)/100) * 100 ) - 100
+growthMean['Adjusted_Growth'] = (((growthMean['Bike_Growth_0'] + 100)/100) / ((growthMean['Bluebikes'] + 100)/100) * 100 ) - 100
+
+# dfDate['Adjusted_Growth'] = (((dfDate['Bike_Growth'] + 100)/100) / ((growthMean['Bluebikes'] + 100)/100) * 100 ) - 100
 
 # Bike mode share by count group
 shareMean = pd.concat((dfDate.groupby(dfDate.Datetime.dt.month)['Bike_Car_Share'].mean(
@@ -334,6 +343,11 @@ ax.yaxis.set_major_formatter(mtick.PercentFormatter())
 plt.plot(growthMean['Datetime'], growthMean['Bike_Growth'],
          color='red', marker='o', markersize=10, markerfacecolor='none', markeredgecolor='r',
          label='Month Average')
+
+# Plot median growth numbers
+plt.plot(growthMedian['Datetime'], growthMedian['Bike_Growth'],
+         color='purple', marker='o', markersize=10, markerfacecolor='none', markeredgecolor='purple',
+         label='Month Median')
 
 
 # Plot Bluebikes data
