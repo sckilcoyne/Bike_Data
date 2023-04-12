@@ -24,7 +24,7 @@ ext = '.pdf'
 commonHeaders = ['Datetime', 'Location', 'Direction',
                  'Bicycles', 'Cars', 'Total']
 
-# %% Open Original Data
+# %% Extract Original Data from PDFs
 
 
 def format1(filename, metaData):
@@ -203,6 +203,8 @@ def collect_data():
 
     return dfAll
 
+# %% Data Analysis
+
 
 def import_bluebikes():
     dfBB = pd.read_csv('bluebikes.txt', header=0)
@@ -248,33 +250,53 @@ def norm2first(data):
 def data_analysis(dfData, dfBB):
     # Summary Data
 
-    dfDate = dfData.groupby(['Location', dfData.Datetime.dt.date])[[
-        'Bicycles', 'Cars', 'Total']].sum()
-    # dfDate = dfDate.reset_index(level=1)
+    # Calculate daily totals for each location and mode
+    dfDate = dfData.groupby(['Location', dfData.Datetime.dt.date])[
+        ['Bicycles', 'Cars', 'Total']].sum()
     dfDate = dfDate.reset_index()
     dfDate['Datetime'] = pd.to_datetime(dfDate['Datetime'])
-
-    dfDate['Bike_Car_Share'] = dfDate['Bicycles'] / dfDate['Cars'] * 100
-    dfDate['Bike_Total_Share'] = dfDate['Bicycles'] / dfDate['Cars'] * 100
-    # dfDate['Bike_Percentile'] = dfDate['Bicycles'] / dfDate['Bicycles'].min()
-
     dfDate = dfDate.sort_values(by='Datetime')
 
-    dfDate = dfDate.groupby(['Location'], group_keys=False).apply(norm2first)
-
+    # Calculate middle day of count groups
     meanCountDate = dfDate.groupby(dfDate.Datetime.dt.month)['Datetime'].mean()
 
-    # Changes in ridership relative to initial count day
-    growthMean = pd.concat((dfDate.groupby(dfDate.Datetime.dt.month)['Bike_Growth_0'].mean(
-    ), meanCountDate), axis=1)
-    growthMean.index.names = ['Idx']
+    # Calculate count locations per day weighted mean of counts
+    dayTotal = dfData.groupby([dfData.Datetime.dt.date])[['Bicycles']].sum()
+    countLocs = dfData.groupby([dfData.Datetime.dt.date])[['Location']].nunique()
+    dfNormalizedMean = pd.DataFrame()
+    dfNormalizedMean['Norm'] = dayTotal['Bicycles'] / countLocs['Location']
+    dfNormalizedMean['Norm'] = dfNormalizedMean['Norm'] / \
+        dfNormalizedMean['Norm'].iloc[0] * 100 - 100
+    dfNormalizedMean['Datetime_col'] = dfNormalizedMean.index
+    dfNormalizedMean['Datetime_col'] = pd.to_datetime(dfNormalizedMean['Datetime_col'])
+    dfNormalizedMean = pd.concat((meanCountDate,
+                                  dfNormalizedMean['Norm'].groupby(dfNormalizedMean.Datetime_col.dt.month).mean()), axis=1)
+    dfNormalizedMean.sort_values('Datetime', inplace=True, ignore_index=True)
 
-    growthMean['growth_median'] = dfDate.groupby(dfDate.Datetime.dt.month)[
-        'Bike_Growth_0'].median()
-    growthMean['growth_geometricMean'] = dfDate.groupby(dfDate.Datetime.dt.month)[
+    # Calculate mode share
+    dfDate['Bike_Car_Share'] = dfDate['Bicycles'] / dfDate['Cars'] * 100
+    dfDate['Bike_Total_Share'] = dfDate['Bicycles'] / dfDate['Cars'] * 100
+
+    # Normalize daily totals to first count day
+    dfDate = dfDate.groupby(['Location'], group_keys=False).apply(norm2first)
+
+    # Changes in ridership relative to initial count day
+    growthSummary = pd.concat((meanCountDate,
+                               dfDate.groupby(dfDate.Datetime.dt.month)['Bike_Growth_0'].mean(),
+                               dfDate.groupby(dfDate.Datetime.dt.month)['Bike_Growth_100'].mean()),
+                              axis=1)
+    growthSummary.index.names = ['Idx']
+
+    growthSummary['Quantile_50'] = dfDate.groupby(dfDate.Datetime.dt.month)[
+        'Bike_Growth_0'].quantile(q=0.5)
+    growthSummary['Quantile_25'] = dfDate.groupby(dfDate.Datetime.dt.month)[
+        'Bike_Growth_0'].quantile(q=0.25)
+    growthSummary['Quantile_75'] = dfDate.groupby(dfDate.Datetime.dt.month)[
+        'Bike_Growth_0'].quantile(q=0.75)
+    growthSummary['growth_geoMean'] = dfDate.groupby(dfDate.Datetime.dt.month)[
         'Bike_Growth_100'].transform(stats.gmean)
 
-    growthMean.sort_values('Datetime', inplace=True, ignore_index=True)
+    growthSummary.sort_values('Datetime', inplace=True, ignore_index=True)
 
     countdatesBluebikes = dfBB[dfBB['Date'].isin(dfDate['Datetime'].unique())]
     countdatesBluebikes = countdatesBluebikes.groupby(
@@ -284,9 +306,9 @@ def data_analysis(dfData, dfBB):
     countdatesBluebikes.sort_values(
         'Datetime', inplace=True, ignore_index=True)
 
-    growthMean['Bluebikes_0'] = countdatesBluebikes['BB_Growth_0']
-    growthMean['Adjusted_Growth'] = (
-        ((growthMean['Bike_Growth_0'] + 100)/100) / ((growthMean['Bluebikes_0'] + 100)/100) * 100) - 100
+    growthSummary['Bluebikes_0'] = countdatesBluebikes['BB_Growth_0']
+    growthSummary['Adjusted_Growth'] = (
+        ((growthSummary['Bike_Growth_0'] + 100)/100) / ((growthSummary['Bluebikes_0'] + 100)/100) * 100) - 100
 
     # dfDate['Adjusted_Growth'] = (((dfDate['Bike_Growth'] + 100)/100) / ((growthMean['Bluebikes'] + 100)/100) * 100 ) - 100
 
@@ -295,12 +317,12 @@ def data_analysis(dfData, dfBB):
     ), dfDate.groupby(dfDate.Datetime.dt.month)['Datetime'].mean()), axis=1)
     shareMean.index.names = ['Idx']
     shareMean.sort_values('Datetime', inplace=True, ignore_index=True)
-    growthMean['Bike_Car_Share'] = shareMean['Bike_Car_Share']
+    growthSummary['Bike_Car_Share'] = shareMean['Bike_Car_Share']
 
     # dateMin = mdates.date2num(dfDate.Datetime.min())
     # dateMax = mdates.date2num(dfDate.Datetime.max())
 
-    return growthMean, dfDate
+    return growthSummary, dfDate, dfNormalizedMean
 
 # %% Plots
 
@@ -349,7 +371,7 @@ def plot_mode_share(df, dfDate):
     fig.savefig('bike_modeshare.png')
 
 
-def plot_bike_growth(df, dfDate):
+def plot_bike_growth(df, dfDate, dfBB, dfTotal):
     # Plot bike growth over time
     fig = plt.figure(figsize=(15, 9), dpi=600)
     ax = fig.add_subplot(1, 1, 1)
@@ -360,13 +382,20 @@ def plot_bike_growth(df, dfDate):
              color='red', marker='o', markersize=10, markerfacecolor='none', markeredgecolor='r',
              label='Month Average')
 
-    # # Plot median growth numbers
-    # plt.plot(growthMedian['Datetime'], growthMedian['Bike_Growth'],
-    #          color='purple', marker='o', markersize=10, markerfacecolor='none', markeredgecolor='purple',
-    #          label='Month Median')
+    # Plot mean growth numbers
+    plt.plot(dfTotal['Datetime'], dfTotal['Norm'],
+             color='g', marker='o', markersize=10, markerfacecolor='none', markeredgecolor='g',
+             label='Month Average')
+
+    # Plot median growth numbers
+    plt.plot(df['Datetime'], df['Quantile_50'],
+             color='purple', marker='o', markersize=10, markerfacecolor='none', markeredgecolor='purple',
+             label='50th Percentile for Count Series')
+    plt.fill_between(df['Datetime'], df['Quantile_25'],
+                     df['Quantile_75'], facecolor='purple', alpha=0.5)
 
     # Plot Bluebikes data
-    plt.plot(df['Datetime'], df['Bluebikes_0'],
+    plt.plot(dfBB['Date'], dfBB['BB_Growth_0'],
              label='Cambridge BlueBikes Rides', color='blue')
 
     # Plot each day's count data
@@ -390,7 +419,7 @@ def plot_bike_growth(df, dfDate):
     fig.savefig('bike_growth.png')
 
 
-def plot_relative_growth(df, dfDate):
+def plot_relative_growth(df, dfDate, dfBB):
     # Plot bike growth over time, relative to Bluebikes
     fig = plt.figure(figsize=(15, 9), dpi=600)
     ax = fig.add_subplot(1, 1, 1)
@@ -405,7 +434,7 @@ def plot_relative_growth(df, dfDate):
              label='Month Average adjusted for Bluebikes Ridership')
 
     # Plot Bluebikes data
-    plt.plot(df['Datetime'], df['Bluebikes_0'],
+    plt.plot(dfBB['Date'], dfBB['BB_Growth_0'],
              label='Cambridge BlueBikes Rides', color='blue')
 
     # Plot each day's count data
@@ -439,8 +468,8 @@ dfGardenCounts = pd.read_pickle('all_garden_data.pkl')
 
 dfBluebikes = import_bluebikes()
 
-dfGrowth, dfGrowthDate = data_analysis(dfGardenCounts, dfBluebikes)
+dfGrowthSummary, dfGrowthCounters, dfSummaryMean = data_analysis(dfGardenCounts, dfBluebikes)
 
-plot_mode_share(dfGrowth, dfGrowthDate)
-plot_bike_growth(dfGrowth, dfGrowthDate)
-plot_relative_growth(dfGrowth, dfGrowthDate)
+plot_mode_share(dfGrowthSummary, dfGrowthCounters)
+plot_bike_growth(dfGrowthSummary, dfGrowthCounters, dfBluebikes, dfSummaryMean)
+plot_relative_growth(dfGrowthSummary, dfGrowthCounters, dfBluebikes)
