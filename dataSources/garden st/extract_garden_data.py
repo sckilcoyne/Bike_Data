@@ -430,7 +430,7 @@ def plot_mode_share(df, dfDate):
     plt.title('Garden St. project implemented in Novemeber 2022')
     ax.text(0.1, 0.01, '@BostonBikeData', transform=ax.transAxes)
     plt.show()
-    fig.savefig('bike_modeshare.png')
+    fig.savefig('bike_modeshare.png', bbox_inches='tight')
 
 
 def plot_bike_growth(df, dfDate, dfBB, dfBway, dfTotal):
@@ -482,7 +482,7 @@ def plot_bike_growth(df, dfDate, dfBB, dfBway, dfTotal):
     plt.title('Garden St. project implemented in Novemeber 2022')
     ax.text(0.1, 0.01, '@BostonBikeData', transform=ax.transAxes)
     plt.show()
-    fig.savefig('bike_growth.png')
+    fig.savefig('bike_growth.png', bbox_inches='tight')
 
 
 def plot_bike_growth_experimental(df, dfDate, dfBB, dfBway, dfTotal):
@@ -540,7 +540,7 @@ def plot_bike_growth_experimental(df, dfDate, dfBB, dfBway, dfTotal):
     plt.title('Garden St. project implemented in Novemeber 2022')
     ax.text(0.1, 0.01, '@BostonBikeData', transform=ax.transAxes)
     plt.show()
-    fig.savefig('bike_growth_experimental.png')
+    fig.savefig('bike_growth_experimental.png', bbox_inches='tight')
 
 
 def plot_bike_volume(df, dfDate, dfBB, dfBway, dfTotal):
@@ -588,7 +588,7 @@ def plot_bike_volume(df, dfDate, dfBB, dfBway, dfTotal):
     plt.title('Garden St. project implemented in Novemeber 2022')
     ax.text(0.1, 0.01, '@BostonBikeData', transform=ax.transAxes)
     plt.show()
-    fig.savefig('bike_volume.png')
+    fig.savefig('bike_volume.png', bbox_inches='tight')
 
 
 def plot_volume_adjusted(df, dfDate, dfBB, dfBway, dfTotal):
@@ -645,7 +645,7 @@ def plot_volume_adjusted(df, dfDate, dfBB, dfBway, dfTotal):
     plt.title('Garden St. project implemented in Novemeber 2022')
     ax.text(0.1, 0.01, '@BostonBikeData', transform=ax.transAxes)
     plt.show()
-    fig.savefig('bike_volume_adjusted.png')
+    fig.savefig('bike_volume_adjusted.png', bbox_inches='tight')
 
 
 def plot_bike_growth_map(countLocale, projectPath, dfCount):
@@ -657,7 +657,7 @@ def plot_bike_growth_map(countLocale, projectPath, dfCount):
     ax.set_extent((-71.134, -71.1215, 42.378, 42.388))  # Left, Right, Bottom, Top
 
     # Add the imagery to the map.
-    ax.add_image(imagery, 16)  # Number is scale, larger gives finer detail
+    ax.add_image(imagery, 17)  # Number is scale, larger gives finer detail
 
     lat = []
     long = []
@@ -679,11 +679,15 @@ def plot_bike_growth_map(countLocale, projectPath, dfCount):
 
     plt.plot(projectPath[:, 1], projectPath[:, 0], transform=ccrs.PlateCarree(),
              alpha=0.6, color='gold', linewidth=10)
+    
+    ax.text(0.1, 0.01, '@BostonBikeData', transform=ax.transAxes,
+            bbox=dict(boxstyle="round,pad=0.3",
+                      fc="white", ec="black", lw=1, alpha=0.7))
 
     plt.legend(loc=1, handler_map={type(sc): HandlerPathCollection(update_func=update_prop)})
     plt.title('Garden St. Improvement Project Area Bike Volume Increase')
     plt.show()
-    fig.savefig('bike_growth_map.png')
+    fig.savefig('bike_growth_map.png', bbox_inches='tight')
 
 
 def plot_bike_volume_map(countLocale, projectPath, dfCount):
@@ -695,7 +699,7 @@ def plot_bike_volume_map(countLocale, projectPath, dfCount):
     ax.set_extent((-71.134, -71.1215, 42.378, 42.388))  # Left, Right, Bottom, Top
 
     # Add the imagery to the map.
-    ax.add_image(imagery, 16)  # Number is scale, larger gives finer detail
+    ax.add_image(imagery, 17)  # Number is scale, larger gives finer detail
 
     lat = []
     long = []
@@ -727,11 +731,15 @@ def plot_bike_volume_map(countLocale, projectPath, dfCount):
 
     plt.plot(projectPath[:, 1], projectPath[:, 0], transform=ccrs.PlateCarree(),
              alpha=0.6, color='gold', linewidth=10, label='Project Extents')
+    
+    ax.text(0.1, 0.01, '@BostonBikeData', transform=ax.transAxes,
+            bbox=dict(boxstyle="round,pad=0.3",
+                      fc="white", ec="black", lw=1, alpha=0.7))
 
     plt.legend(loc=1, handler_map={type(sc): HandlerPathCollection(update_func=update_prop)})
     plt.title('Garden St. Improvement Project Area Bike Volume')
     plt.show()
-    fig.savefig('bike_raw_volume_map.png')
+    fig.savefig('bike_raw_volume_map.png', bbox_inches='tight')
 
 
 def update_prop(handle, orig):
