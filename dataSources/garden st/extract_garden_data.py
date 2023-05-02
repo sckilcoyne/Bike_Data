@@ -230,7 +230,7 @@ def import_bluebikes():
 def import_broadway():
     df = pd.read_pickle('broadway-daily_totals.pkl')
 
-    dfBway = pd.DataFrame(df['Total'][df['Date'] > "2022-10-11"])
+    dfBway = pd.DataFrame(df['Total'][df['Date'] > "2022-05-10"])
     dfBway['Broadway_Growth_frac'] = dfBway['Total'] / dfBway['Total'][0]
     dfBway['Broadway_Growth_100'] = dfBway['Broadway_Growth_frac'] * 100
     dfBway['Broadway_Growth_0'] = dfBway['Broadway_Growth_100'] - 100
@@ -556,11 +556,11 @@ def plot_bike_volume(df, dfDate, dfBB, dfBway, dfTotal):
 
     # Plot Bluebikes data
     plt.plot(dfBB['Date'], dfBB['BB_Growth_0'],
-             label='Broadway Bike Counter', color='blue')
+             label='Cambridge BlueBikes Rides', color='blue')
 
     # Plot Braodway data
     plt.plot(dfBway['Date'], dfBway['Broadway_Growth_0'],
-             label='Cambridge BlueBikes Rides', color='darkorange')
+             label='Broadway Bike Counter', color='darkorange')
 
     # Notes on max improvements
     note1 = 'Since project implementation, bike volume across'
@@ -615,7 +615,7 @@ def plot_volume_adjusted(df, dfDate, dfBB, dfBway, dfTotal):
 
     # Plot Braodway data
     plt.plot(dfBway['Date'], dfBway['Broadway_Growth_0'],
-             label='Cambridge BlueBikes Rides', color='darkorange', linestyle='--')
+             label='Broadway Bike Counter', color='darkorange', linestyle='--')
 
     # Notes on max improvements
     noteHeader = 'Since project implementation, bike volume at \neach count location has increased on average by as much as:'
@@ -673,13 +673,13 @@ def plot_bike_growth_map(countLocale, projectPath, dfCount):
 
         # print(f'{count}: [{newLat}, {newLong}] = {newGrowth}')
 
+    plt.plot(projectPath[:, 1], projectPath[:, 0], transform=ccrs.PlateCarree(),
+             alpha=0.6, color='gold', linewidth=10, label='Project Extents')
+
     sc = plt.scatter(long, lat, transform=ccrs.PlateCarree(),
                      marker='o', color='red', s=growth, alpha=0.5,
                      linestyle='', label='Growth relative to initial count')
 
-    plt.plot(projectPath[:, 1], projectPath[:, 0], transform=ccrs.PlateCarree(),
-             alpha=0.6, color='gold', linewidth=10)
-    
     ax.text(0.1, 0.01, '@BostonBikeData', transform=ax.transAxes,
             bbox=dict(boxstyle="round,pad=0.3",
                       fc="white", ec="black", lw=1, alpha=0.7))
@@ -722,6 +722,9 @@ def plot_bike_volume_map(countLocale, projectPath, dfCount):
     bikeMin = [bike * scale for bike in bikeMin]
     bikeMax = [bike * scale for bike in bikeMax]
 
+    plt.plot(projectPath[:, 1], projectPath[:, 0], transform=ccrs.PlateCarree(),
+             alpha=0.6, color='gold', linewidth=10, label='Project Extents')
+
     sc = plt.scatter(long, lat, transform=ccrs.PlateCarree(),
                      marker='o', color='green', s=bikeMax, alpha=0.5,
                      linestyle='', label='Peak Increase')
@@ -729,9 +732,6 @@ def plot_bike_volume_map(countLocale, projectPath, dfCount):
                 marker='o', color='blue', s=bikeMin, alpha=0.5,
                 linestyle='', label='Initial Count')
 
-    plt.plot(projectPath[:, 1], projectPath[:, 0], transform=ccrs.PlateCarree(),
-             alpha=0.6, color='gold', linewidth=10, label='Project Extents')
-    
     ax.text(0.1, 0.01, '@BostonBikeData', transform=ax.transAxes,
             bbox=dict(boxstyle="round,pad=0.3",
                       fc="white", ec="black", lw=1, alpha=0.7))
@@ -751,7 +751,9 @@ def update_prop(handle, orig):
 # %% Project Info
 
 
-countLocations = {'BondSt_GardenSt': [42.380982, -71.126894],
+countLocations = {'GardenSt_GardenLn': [42.380564, -71.125426],
+                  'GardenSt_RobinsonSt': [42.383132, -71.127852],
+                  'BondSt_GardenSt': [42.380982, -71.126894],
                   'MadisonSt_HollyAve': [42.382005, -71.129418],
                   'NewellSt_UplandRd': [42.385857, -71.128693],
                   'GardenSt_IvySt': [42.385844, -71.132865],
