@@ -17,7 +17,7 @@ python-dotenv==0.21.1
 
 # Plotting
 matplotlib==3.7.0
-plotly==5.13.0
+plotly==5.14.1
 
 # Scraping
 sodapy==2.2.0
