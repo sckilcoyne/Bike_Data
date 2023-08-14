@@ -25,5 +25,5 @@ beautifulsoup4==4.12.2
 lxml==4.9.2
 
 # Cloud Storage
-google-cloud-storage==2.7.0
+google-cloud-storage==2.10.0
 # pydrive2==1.14.0
