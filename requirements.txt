@@ -6,7 +6,7 @@
 # https://realpython.com/twitter-bot-python-tweepy/#deploying-bots-to-a-server-using-docker
 
 # Posting
-tweepy==4.12.1
+tweepy==4.14.0
 mastodon.py==1.8.0
 
 # General python
