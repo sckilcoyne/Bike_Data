@@ -8,8 +8,8 @@ import sys
 import logging
 from datetime import datetime, timedelta, date
 
-import requests
 import pickle
+import requests
 import pandas as pd
 import numpy as np
 

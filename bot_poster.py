@@ -7,7 +7,6 @@ Created on Mon Nov 29 20:21:23 2021
 # %% Initialize
 # pylint: disable=invalid-name, broad-except
 
-# import tweepy
 from datetime import datetime
 import time
 
@@ -15,14 +14,14 @@ import os
 # import sys
 import logging
 import logging.config
-
+import json
 # pylint: disable=import-error
-# from utils.configTwitterBot import create_client
 import utils.configTwitterBot as configTwitter
 import utils.config_mastodon as configMastodon
 from utils import google_cloud
-from dataSources import cambridge_totem as totem
-from dataSources import ms2soft
+from dataSources import cambridge_odp as codp
+# from dataSources import ms2soft
+from dataSources import nmds
 from dataSources import retweeter
 # pylint: enable=import-error
 
@@ -36,12 +35,19 @@ bucket_name = os.getenv('GCS_BUCKET_NAME')
 logger.info('bucket_name: %s', bucket_name)
 
 # %% Settings
+
+# Hours to run features
 START_POSTING = 8
-START_TOTEM = 9
-START_NMDS = 10
+START_CODP = 12
+START_NMDS = 12
+END_POSTING = 18
+
+# Limit how many times per day to retry
+retryCODPinit = 3
+retryNMDSinit = 3
 
 
-# %% Functions
+# %% Bot sleep functions
 
 def sleep_till(wakeTime=START_POSTING):
     """Sleep until given hour
@@ -51,7 +57,7 @@ def sleep_till(wakeTime=START_POSTING):
     """
     now = datetime.now()
 
-    if now.hour > START_POSTING:
+    if now.hour > wakeTime:
         day = now.day + 1
     else:
         day = now.day
@@ -72,7 +78,7 @@ def sleep_time(timeSleep=1*60*60):
     time.sleep(timeSleep)
 
 
-# %% Bot Functions
+# %% API Creation Functions
 def create_API_clients():
     '''Create API clients to post
     '''
@@ -88,7 +94,7 @@ def create_twitter_client():
         clientTwitter = configTwitter.create_client()
         logger.info('Connected to Twitter')
     except Exception as e:
-        logger.info('tweet_bot.create_twitter_client raised exception. Continue on...', exc_info=e)
+        logger.info('bot.create_twitter_client raised exception. Continue on...', exc_info=e)
         clientTwitter = None
 
     return clientTwitter
@@ -100,11 +106,12 @@ def create_mastodon_client():
         clientMastodon = configMastodon.create_client()
         logger.info('Connected to Mastodon')
     except Exception as e:
-        logger.info('tweet_bot.create_mastodon_client raised exception. Continue on...', exc_info=e)
+        logger.info('bot.create_mastodon_client raised exception. Continue on...', exc_info=e)
         clientMastodon = None
 
     return clientMastodon
 
+# %% Posting
 def make_post(post, clientTwitter, clientMastodon):
     '''Create posts for all services
     '''
@@ -118,14 +125,24 @@ def make_post(post, clientTwitter, clientMastodon):
     try:
         clientTwitter.create_tweet(text=post)
     except Exception as e:
-        logger.info('tweet_bot.make_post(Twitter) raised exception. Continue on...', exc_info=e)
+        logger.info('bot.make_post(Twitter) raised exception. Continue on...', exc_info=e)
 
     try:
         clientMastodon.status_post(post)
     except Exception as e:
-        logger.info('tweet_bot.make_post(Mastodon) raised exception. Continue on...', exc_info=e)
+        logger.info('bot.make_post(Mastodon) raised exception. Continue on...', exc_info=e)
 
     return clientTwitter, clientMastodon
+
+def make_posts(postList, clientTwitter, clientMastodon):
+    '''Create posts for a list posts on all services
+    '''
+
+    for p in postList:
+        clientTwitter, clientMastodon = make_post(p, clientTwitter, clientMastodon)
+
+    return clientTwitter, clientMastodon
+
 
 # %% Bot
 
@@ -142,58 +159,63 @@ def main():
     # Create API clients to post
     clientTwitter, clientMastodon = create_API_clients()
 
+    retryCODP = retryCODPinit
+    retryNMDS = retryNMDSinit
+
     # Continuously scrape new data and post updates
     while True:
 
-        # Broadway totem
-        if datetime.now().hour > START_TOTEM:
+        # Cambridge Open Data Portal
+        if (datetime.now().hour > START_CODP) & (retryCODP > 0):
+            retryCODP = retryCODP - 1
             try:
-                postList, _, _, _, _ = totem.main()
+                postList, _, _, _ = codp.main()
                 # postList, results_df, updateDaily, recordsNew = totem.main()
 
                 if (postList is not None) and (len(postList) > 0):
                     logger.info('Broadway totem Posts:')
-                    clientTwitter, clientMastodon, retryTwitterB, retryMastodonB = make_posts(
-                                                        postList, clientTwitter, clientMastodon, 'all')
+                    clientTwitter, clientMastodon = make_posts(postList, clientTwitter, clientMastodon)
 
                 else:
-                    logger.info('No new posts from Broadway totem (tweet_bot>main)')
+                    logger.info('No new posts from Broadway totem (bot>main)')
             except Exception as e:
-                logger.info('tweet_bot>totem.main() raised exception. Continue on...', exc_info=e)
+                logger.info('bot>totem.main() raised exception. Continue on...', exc_info=e)
                 # pass
 
         # Mass Nonmotorized Database System (ms2soft)
-        if datetime.now().hour > START_NMDS:
+        if (datetime.now().hour > START_NMDS) & (retryNMDS > 0):
+            retryNMDS = retryNMDS - 1
             try:
-                postList = ms2soft.main()
+                postList = nmds.main()
 
                 if (postList is not None) and (len(postList) > 0):
                     logger.info('NMDS-ms2soft Posts:')
-                    clientTwitter, clientMastodon, retryTwitterM, retryMastodonM = make_posts(
-                                                        postList, clientTwitter, clientMastodon, 'all')
+                    clientTwitter, clientMastodon = make_posts(postList, clientTwitter, clientMastodon)
                 else:
-                    logger.info('No new posts from NMDS-ms2soft (tweet_bot>main)')
+                    logger.info('No new posts from NMDS-ms2soft (bot>main)')
             except Exception as e:
-                logger.info('tweet_bot>ms2soft.main() raised exception. Continue on...', exc_info=e)
+                logger.info('bot>ms2soft.main() raised exception. Continue on...', exc_info=e)
 
 
         # Retweet
         try:
             retweeter.main(clientTwitter)
         except Exception as e:
-            logger.info('tweet_bot>retweeter.main() raised exception. Continue on...', exc_info=e)
+            logger.info('bot>retweeter.main() raised exception. Continue on...', exc_info=e)
 
 
         # Upload all modified files to google cloud
         try:
             google_cloud.main()
         except Exception as e:
-            logger.info('tweet_bot>google_cloud.main()  raised exception. Continue on...', exc_info=e)
+            logger.info('bot>google_cloud.main()  raised exception. Continue on...', exc_info=e)
 
         # Time for a nap
-        # Check for new data every hour between 8am and 8pm
-        if  datetime.now().hour > 20:
+        # Check for new data every hour until end of posting for the day
+        if  datetime.now().hour > END_POSTING:
             sleep_till()
+            retryCODP = retryCODPinit
+            retryNMDS = retryNMDSinit
         else:
             sleep_time()
 

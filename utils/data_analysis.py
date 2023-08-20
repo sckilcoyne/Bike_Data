@@ -1,16 +1,17 @@
 '''
 Universal Data Analysis
 
-(Moving functions used in a dataset to be used in all datasets)
 '''
 
 # %% Initialize
-import calendar
+# import calendar
 import logging
-
+import json
 import numpy as np
 import pandas as pd
 from scipy import stats
+from dataSources import cambridge_odp as odp
+from dataSources import nmds
 
 # pylint: disable=invalid-name
 
@@ -21,7 +22,7 @@ logger = logging.getLogger(__name__)
 # %% Data Sets
 
 def daily_counts(newData):
-    '''Calculate daily totals
+    '''Calculate daily totals from hourly/15-min intervals from the source data
     '''
     dirList = ['Total', 'Northbound', 'Southbound', 'Eastbound', 'Westbound']
     directions = list(set(dirList) & set(list(newData)))
@@ -43,8 +44,8 @@ def daily_counts(newData):
 
     return updateDaily
 
-# %% Data Calculations
-def tweet_note(newData, dailyTotals, records=None):
+# %% Format Tweets
+def tweet_note(dailyTotals, date):
     '''
     Calculate percentile for every day
     Try for day of week in month
@@ -56,33 +57,6 @@ def tweet_note(newData, dailyTotals, records=None):
     monthName = newData['MonthName'][0]
     dayofWeek = newData['DayofWeek'][0]
 
-    # Check record book
-    dailyRecordStr = None
-    if records is not None:
-        dailyRecord = records['dailyRecord']
-        monthlyRecord = records['monthlyRecords'][newData['Month']]
-
-        # Daily record for given month
-        if total > monthlyRecord:
-            dailyRecordStr = 'New daily record for month of ' + monthName + ' of ' + total + \
-                ' riders on ' + newData['Date'] + \
-                '! (Previous record for month was ' + monthlyRecord + '.)'
-            logger.info(dailyRecordStr)
-            records['monthlyRecords'][newData['Month']] = total
-        else:
-            logger.info('...did not break the daily record for this month')
-
-        # All time daily count record
-        if total > dailyRecord:
-            dailyRecordStr = 'New all-time daily record of ' + total + ' riders on ' + \
-                newData['Date'] + '! (Previous record ' + dailyRecord + '.)'
-            logger.info(dailyRecordStr)
-            records['dailyRecord'] = total
-        else:
-            logger.info('...did not break the all-time daily record')
-    else:
-        logger.info('No record book for counter')
-
     # Check for most detailed (or best) performance metric (above threshold of occurances)
     weekdays = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday']
     weekends = ['Sunday', 'Monday']
@@ -90,7 +64,7 @@ def tweet_note(newData, dailyTotals, records=None):
         weekPart = (weekdays, 'weekdays')
     else:
         weekPart = (weekends, 'weekends')
-    
+
     months = [['September', 'October', 'November'],
                 ['December', 'Janurary', 'February'],
                 ['March', 'April', 'May'],
@@ -110,38 +84,46 @@ def tweet_note(newData, dailyTotals, records=None):
         selection = dailyTotals[
             (dailyTotals['MonthName'].isin(f[0])) & 
             (dailyTotals['DayofWeek'].isin(f[1]))]
-    # selection = dailyTotals[
-    #     (dailyTotals['MonthName'] == monthName) &
-    #     (dailyTotals['DayofWeek'] == dayofWeek)]
+
         if selection.shape[0] > 4:
             percentile = stats.percentileofscore(selection['Total'], total)
             percentileVal = f'{percentile:.0f}'
             logger.info('%s percentile of trips for %s', percentileVal, f[2])
 
             # Choose the most detailed percentile above posting threshold
+            if percentile == 100:
+                percentileStr = f'\n\nNew record for {f[2]}!'
+                break
             if percentile > 50:
                 percentileStr = f'\n\n{percentileVal} percentile of {f[2]}'
                 break
 
     tweetNote = ''
-    if dailyRecordStr is not None:
-        tweetNote = f'\n\n{dailyRecordStr}'
-    elif percentileStr is not None:
+    if percentileStr is not None:
         tweetNote = f'\n\n{percentileStr}'
 
     return tweetNote
 
-# %% Format Tweets
-def format_tweet(stationName, newCount, dailyTotals, records=None):
+def format_tweet(dailyCounts, stationInfo, date):
     '''
     Write the full tweet for a new day of data
     '''
-    # countDate =
-    bikeCount = newCount['Total'].sum()
-    # dateString = pd.to_datetime(countDate, format=r'%m/%d/%Y')
-    # dateString = dateString.strftime('%a %b %d')
-    dateString = pd.to_datetime(newCount['Date'][0], format=r'%m/%d/%Y').strftime('%a %b %d')
-    tweetNote = tweet_note(newCount, dailyTotals, records)
+    stationName = stationInfo[1]
+
+    bikeCount = dailyCounts['Count'].loc[dailyCounts['Date'] == date]
+
+    dateString = pd.to_datetime(date, format=r'%m/%d/%Y').strftime('%a %b %d')
+    tweetNote = tweet_note(dailyCounts, date)
     tweet = f'{stationName}\n{bikeCount} riders on {dateString}{tweetNote}'
     return tweet
-    
+
+
+def new_posts():
+    '''
+    Create a list of new posts to make
+    '''
+    tweetList = []
+    for d in dateList:
+        tweetList.append(format_tweet(dailyCounts, stationInfo, d))
+
+    return tweetList

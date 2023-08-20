@@ -1,11 +1,14 @@
 # -*- coding: utf-8 -*-
-"""
-Download data from Cambridge API for Broadway Eco-Totem
+'''
+Download data from Cambridge Open Data Portal API
+
+Counters:
+    Broadway Eco-Totem
 
 https://data.cambridgema.gov/Transportation-Planning/Eco-Totem-Broadway-Bicycle-Count/q8v9-mcfg
 https://data.cambridgema.gov/resource/q8v9-mcfg.json
 
-"""
+'''
 
 # %% Initialize
 # pylint: disable=invalid-name, broad-except
@@ -32,6 +35,14 @@ sys.path.insert(0,os.getcwd())
 import utils.utilFuncs as utils
 import utils.data_analysis as da
 # pylint:enable=import-error, wrong-import-position
+
+cols_standard = ['StationID', 'StationName', 'Mode', 'DateTime', 'Count']
+# StationID: Counter station code
+# StationName: Station name used in posts
+# Mode: Mode count is for e.g. bike/ped
+# DateTime: datetime of count
+# Count: Total count for the DateTime of the Mode
+#   Counts for specific directions can be extra columns
 
 # Set up logging
 # https://stackoverflow.com/questions/15727420/using-logging-in-multiple-modules
@@ -64,28 +75,20 @@ def load_count_data():
     completeData = pd.read_pickle(f'{dataFolder}/broadway-complete.pkl')
     rawData = pd.read_pickle(f'{dataFolder}/broadway-raw.pkl')
 
-    infile = open(dataFolder + '/broadway-records.pkl', 'rb')
-    broadwayRecords = pickle.load(infile)
-    # print(records)
-    infile.close()
+    return dailyTotals, completeData, rawData
 
-    return dailyTotals, broadwayRecords, completeData, rawData
-
-def save_count_data(newDailyCounts, records, completeData, rawData):
-    """Append new daily counts and update daily records to saved files.
+def save_count_data(newDailyCounts, completeData, rawData):
+    """Append new daily counts to saved files.
 
     Args:
         dailyCounts (dataframe): _description_
-        records (dict): _description_
         completeData (dataframe): _description_
     """
     completeData.to_pickle('data/broadway-complete.pkl', protocol=3)
     newDailyCounts.to_pickle('data/broadway-daily_totals.pkl', protocol=3)
     rawData.to_pickle('data/broadway-raw.pkl', protocol=3)
 
-    utils.pickle_dict(records, 'data/broadway-records')
-
-    logger.info('Saved updated daily counts and records.')
+    logger.info('Saved updated daily counts.')
 
 
 # %% API Info
@@ -256,84 +259,6 @@ def standardize_df(newData):
 
     return stdData
 
-# %% Records
-
-
-def format_tweet(broadwayDailyTotals, updateDaily, records):
-    """Create new tweets based on new data
-    - Check if day broke a record
-    - Calculate percentile for given day
-    - Add most interesting tibit to tweet
-
-    Args:
-        updateDaily ([type]): [description]
-        records ([type]): [description]
-
-    Returns:
-        [type]: [description]
-    """
-    tweetList = []
-
-    localeStr = 'Broadway in Cambridge (Eco-Totem)\n'
-
-    for _, day in updateDaily.iterrows():
-        total = day['Total']
-        dailyRecord = records['dailyRecord']
-        monthlyRecord = records['monthlyRecords'][day['Month']]
-
-        dateString = day['Date']
-        dateString = dateString.strftime('%a %b %d')
-
-        dailyRecordStr = None
-
-        # Daily record for given month
-        if total > monthlyRecord:
-            monthName = str(calendar.month_name[day['Month']])
-            dailyRecordStr = 'New daily record for month of ' + monthName + ' of ' + total + \
-                ' riders on ' + day['Date'] + \
-                '! (Previous record for month was ' + monthlyRecord + '.)'
-            logger.info(dailyRecordStr)
-            records['monthlyRecords'][day['Month']] = total
-        else:
-            logger.info('...did not break the daily record for this month')
-
-        # All time daily count record
-        if total > dailyRecord:
-            dailyRecordStr = 'New all-time daily record of ' + total + ' riders on ' + \
-                day['Date'] + '! (Previous record ' + dailyRecord + '.)'
-            logger.info(dailyRecordStr)
-            records['dailyRecord'] = total
-        else:
-            logger.info('...did not break the all-time daily record')
-
-        # Percentile for day of week in month
-        monthName = day['MonthName']
-        dayofWeek = day['DayofWeek']
-
-        selection = broadwayDailyTotals[
-            (broadwayDailyTotals['MonthName'] == monthName) &
-            (broadwayDailyTotals['DayofWeek'] == dayofWeek)]
-
-        percentile = stats.percentileofscore(selection['Total'], total)
-        percentileStr = f'{percentile:.0f}'
-        logger.info('%s percentile of trips for day of month', percentileStr)
-
-        if percentile > 50:
-            percentileStr = f'\n\n{percentileStr} percentile of {dayofWeek}s in {monthName}'
-        else:
-            percentileStr = ''
-
-        # Build the tweet
-        countStr = str(total) + ' riders on ' + dateString
-        logger.info('With %s ...', countStr)
-
-        if dailyRecordStr is not None:
-            tweetList.append(localeStr + dailyRecordStr)
-        else:
-            tweetList.append(localeStr + countStr + percentileStr)
-
-    return records, tweetList
-
 
 # %% Main
 
@@ -352,7 +277,7 @@ def main():
 
     # Load saved data
     try:
-        dailyTotals, broadwayRecords, completeData, rawData = load_count_data()
+        dailyTotals, completeData, rawData = load_count_data()
     except Exception as e:
         logger.error('Failed to load pickeled data.',  exc_info=e)
 
@@ -380,15 +305,15 @@ def main():
             # Update daily totals data
             dailyTotals = pd.concat([dailyTotals, newDailyCounts])
 
-            recordsNew, tweetList = format_tweet(dailyTotals,
-                newDailyCounts, broadwayRecords)
+            _, tweetList = format_tweet(dailyTotals,
+                newDailyCounts)
 
-            save_count_data(dailyTotals, recordsNew, completeData, rawData)
+            save_count_data(dailyTotals, completeData, rawData)
 
             logger.debug(type(newData_df), type(newDailyCounts),
-                          type(recordsNew), type(tweetList))
+                          type(tweetList))
 
-            return tweetList, newData_df, newDailyCounts, recordsNew, completeData
+            return tweetList, newData_df, newDailyCounts, completeData
         else:
             return None, None, None, None, None
 

@@ -1,0 +1,14 @@
+{
+"PostStart":[
+    {"Bot": "8"},
+    {"NMDS": "14"},
+    {"CODP": "12"}
+],
+"PostEnd" :[
+    {"Bot": "16"}
+],
+"RetryLimits" :[
+    {"NMDS": "3"},
+    {"CODP": "3"}
+]
+}
