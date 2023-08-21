@@ -7,7 +7,7 @@
 
 # Posting
 tweepy==4.14.0
-mastodon.py==1.8.0
+mastodon.py==1.8.1
 
 # General python
 pandas==2.0.3
