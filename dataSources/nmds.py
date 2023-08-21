@@ -1,4 +1,6 @@
 '''
+Download data from MassDOT Non-Motordized Database System (NMDS) through the MS2Soft site.
+
 
 Origininally written by https://github.com/crschmidt
 https://github.com/crschmidt/bikes/tree/main/mass_nmds
@@ -6,7 +8,6 @@ https://github.com/crschmidt/bikes/tree/main/mass_nmds
 # %% Initialize
 import datetime
 import json
-from pathlib import Path
 import logging
 import requests
 import pandas as pd
@@ -72,19 +73,22 @@ def fetch_site(site_id, site_name, date=datetime.date(2023, 1, 1)):
     return trips
 
 
-def get_dates(site_id):
+def get_dates(counter_id):
     '''Get all dates a counter location has
+
+    Return: Generator of all dates with data
     '''
     url = "https://mhd.ms2soft.com/tdms.ui/nmds/analysis/GetLocationAttributes"
     # User-Agent filtering is so silly.
     ua = 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7)'
     params = {
-        'masterLocalId': site_id,
+        'masterLocalId': counter_id,
     }
     r = requests.post(url=url, data=params,
                       headers={'User-Agent': ua}, timeout=10)
     d = json.loads(r.content)
     dates = (x['DateFormatted'] for x in d['CountItems'])
+
     return dates
 
 # %% Test Functions
@@ -104,38 +108,56 @@ def run_all(date=datetime.date(2023, 8, 10)):
         print(i[1], fetch_site(i[0], date))
 
 # %% Main
-def fetch_all_dates():
+def main(counterInfo, datelist=None):
     '''Download data from full list of counters for all dates they have data
 
     Save data for each counter location in a labeled file
+
+    datelist: List of dates to download. If not given, download all dates availible.
     '''
+    counterID = counterInfo[0]
+    counterName = counterInfo[1]
+    print(counterID)
+    dates = get_dates(counterID)
 
-    counter_list = json.load(open("dataSources/nmds_counters.json", encoding="utf8"))
-    for c in counter_list:
-        counter = c[0]
-        print(counter)
-        dates = get_dates(counter)
+    newdata = pd.DataFrame(columns=cols_standard)
 
-        filename = f'data/{counter}_full.pkl'
-
-        # Load saved data if it exists, otherwise create new dataframe
-        if Path(filename).is_file():
-            counterdf = pd.read_pickle(filename)
+    # for d in list(dates):
+    for d in dates:
+        print(counterID, d)
+        date = datetime.datetime.strptime(d, "%m/%d/%Y")
+        if date in datelist:
+            data = fetch_site(counterID, counterName, date)
+        elif date is None:
+            data = fetch_site(counterID, counterName, date)
         else:
-            counterdf = pd.DataFrame(columns=cols_standard)
+            data = pd.DataFrame(columns=cols_standard)
 
-        for d in list(dates):
-            print(counter, d)
-            date = datetime.datetime.strptime(d, "%m/%d/%Y")
-            if date not in counterdf['Date']:
-                data = fetch_site(counter, date)
-                counterdf = pd.concat([counterdf, data], ignore_index=True)
+        newdata = pd.concat([newdata, data], ignore_index=True)
 
-        counterdf.to_pickle(filename)
+    return newdata
 
 
+# %% Script
 if __name__ == "__main__":
+    # pylint: disable=ungrouped-imports
+    import logging.config
+    logging.config.fileConfig(fname='log.conf', disable_existing_loggers=False)
+    logger = logging.getLogger(__name__)
+    logger.setLevel('DEBUG')
+    logger.debug("Logging is configured.")
+
     yesterday = datetime.datetime.now()-datetime.timedelta(days=2)
+
+    counter_list = json.load(open("nmds_counters.json", encoding="utf8"))
+
     # run_all(yesterday)
     # fetch_all_dates()
-    run()
+    # run()
+
+    dateGenerator = get_dates('4005')
+    for x in dateGenerator:
+        print(x)
+
+    # for x in list(dateGenerator):
+    #     print(x)

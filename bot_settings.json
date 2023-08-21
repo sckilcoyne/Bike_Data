@@ -1,14 +1,12 @@
 {
-"PostStart":[
-    {"Bot": "8"},
-    {"NMDS": "14"},
-    {"CODP": "12"}
-],
-"PostEnd" :[
-    {"Bot": "16"}
-],
-"RetryLimits" :[
-    {"NMDS": "3"},
-    {"CODP": "3"}
-]
+"PostStart_Bot": 8,
+"PostStart_NMDS": 14,
+"PostStart_CODP": 12,
+
+"PostEnd_Bot" : 16,
+
+"RetryLimit_NMDS" : 3,
+"RetryLimit_CODP" : 3,
+
+"PostBurstLimit" : 4
 }

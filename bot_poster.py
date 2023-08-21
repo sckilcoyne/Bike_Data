@@ -12,18 +12,32 @@ import time
 
 import os
 # import sys
+from pathlib import Path
 import logging
 import logging.config
 import json
+import pickle
+import pandas as pd
+# import numpy as np
 # pylint: disable=import-error
 import utils.configTwitterBot as configTwitter
 import utils.config_mastodon as configMastodon
 from utils import google_cloud
+import utils.data_analysis as da
 from dataSources import cambridge_odp as codp
-# from dataSources import ms2soft
 from dataSources import nmds
 from dataSources import retweeter
 # pylint: enable=import-error
+
+
+cols_standard = ['StationID', 'StationName', 'Mode', 'DateTime', 'Count']
+# StationID: Counter station code
+# StationName: Station name used in posts
+# Mode: Mode count is for e.g. bike/ped
+# DateTime: datetime of count
+# Count: Total count for the DateTime of the Mode
+#   Counts for specific directions can be extra columns
+
 
 # Set up logging
 # https://stackoverflow.com/questions/15727420/using-logging-in-multiple-modules
@@ -35,21 +49,25 @@ bucket_name = os.getenv('GCS_BUCKET_NAME')
 logger.info('bucket_name: %s', bucket_name)
 
 # %% Settings
+settings = json.load(open("bot_settings.json", encoding="utf8"))
 
 # Hours to run features
-START_POSTING = 8
-START_CODP = 12
-START_NMDS = 12
-END_POSTING = 18
+START_POSTING = settings['PostStart_Bot']
+START_CODP = settings['PostStart_NMDS']
+START_NMDS = settings['PostStart_CODP']
+END_POSTING = settings['PostEnd_Bot']
+
+# Limit how many posts to make at a time
+BURST_LIMIT = settings['PostBurstLimit']
 
 # Limit how many times per day to retry
-retryCODPinit = 3
-retryNMDSinit = 3
+RETRY_CODP = settings['RetryLimit_NMDS']
+RETRY_NMDS = settings['RetryLimit_CODP']
 
 
 # %% Bot sleep functions
 
-def sleep_till(wakeTime=START_POSTING):
+def sleep_time(wakeTime=START_POSTING):
     """Sleep until given hour
 
     Args:
@@ -67,7 +85,7 @@ def sleep_till(wakeTime=START_POSTING):
     logger.info('Sleep from now (%s) until %s', now, wakeTime)
     time.sleep((wakeTime - now).seconds)
 
-def sleep_time(timeSleep=1*60*60):
+def nap_time(timeSleep=1*60*60):
     """Sleep for given time.
 
     Default: 1 hour
@@ -138,10 +156,16 @@ def make_posts(postList, clientTwitter, clientMastodon):
     '''Create posts for a list posts on all services
     '''
 
-    for p in postList:
-        clientTwitter, clientMastodon = make_post(p, clientTwitter, clientMastodon)
+    for _ in range(BURST_LIMIT):
+        # Only create so many posts at a time, remove created posts from list of posts to be made
+        clientTwitter, clientMastodon = make_post(postList[0], clientTwitter, clientMastodon)
+        del postList[0]
 
-    return clientTwitter, clientMastodon
+    # for p in list(postList): # Iterate over copy of list to remove from list along way
+        # clientTwitter, clientMastodon = make_post(p, clientTwitter, clientMastodon)
+        # postList.remove(p)
+
+    return postList, clientTwitter, clientMastodon
 
 
 # %% Bot
@@ -159,43 +183,131 @@ def main():
     # Create API clients to post
     clientTwitter, clientMastodon = create_API_clients()
 
-    retryCODP = retryCODPinit
-    retryNMDS = retryNMDSinit
+    retryCODP = RETRY_CODP
+    retryNMDS = RETRY_NMDS
 
     # Continuously scrape new data and post updates
     while True:
 
+        today = datetime.datetime.today().date()
+        pastweek = [today - datetime.timedelta(days=x+1) for x in range(7)]
+
+        filename_postlist = 'data/postlist.pkl'
+        if Path(filename_postlist).is_file():
+            with open(filename_postlist, 'rb') as f:
+                postlist = pickle.load(f)
+            # postlist = pd.read_pickle(filename_postlist)
+        else:
+            postlist = pd.Series()
+
         # Cambridge Open Data Portal
         if (datetime.now().hour > START_CODP) & (retryCODP > 0):
             retryCODP = retryCODP - 1
-            try:
-                postList, _, _, _ = codp.main()
-                # postList, results_df, updateDaily, recordsNew = totem.main()
 
-                if (postList is not None) and (len(postList) > 0):
-                    logger.info('Broadway totem Posts:')
-                    clientTwitter, clientMastodon = make_posts(postList, clientTwitter, clientMastodon)
+            # Load list of counters
+            countersCODP = json.load(open("dataSources/codp_counters.json", encoding="utf8"))
 
-                else:
-                    logger.info('No new posts from Broadway totem (bot>main)')
-            except Exception as e:
-                logger.info('bot>totem.main() raised exception. Continue on...', exc_info=e)
-                # pass
+            for c in countersCODP:
+                try:
+                    # Load full and daily datasets of counter, create empty df if it doesn't exsist
+                    filename_full = f'data/{c[0]}_full.pkl'
+                    filename_daily = f'data/{c[0]}_daily.pkl'
+                    if Path(filename_full).is_file():
+                        cdf_full = pd.read_pickle(filename_full)
+                    else:
+                        cdf_full = pd.DataFrame(columns=cols_standard)
+                    if Path(filename_daily).is_file():
+                        cdf_daily = pd.read_pickle(filename_daily)
+                    else:
+                        cdf_daily = pd.DataFrame(columns=cols_standard)
 
-        # Mass Nonmotorized Database System (ms2soft)
+                    # Create numpy array of dates with data
+                    datadates = cdf_full['DateTime'].dt.date
+                    # datadates = datadates.unique()
+
+                    # Create a list of dates in the past week without data
+                    datelist = set(pastweek) - set(datadates)
+
+                    # Download data from missing dates
+                    newcdf_full = codp.main(c, datelist)
+
+                    # Update the daily count dataframe
+                    newcdf_daily = da.daily_counts(newcdf_full)
+
+                    # Add new data to exsisting data
+                    cdf_full = pd.concat([cdf_full, newcdf_full], ignore_index=True)
+                    cdf_daily = pd.concat([cdf_daily, newcdf_daily], ignore_index=True)
+
+                    # Create post list from new data
+                    postlist = da.new_posts(postlist, cdf_daily, newcdf_daily, c)
+
+                    # Save data to file
+                    cdf_full.to_pickle(filename_full, protocol=3)
+                    cdf_daily.to_pickle(filename_daily, protocol=3)
+
+                except Exception as e:
+                    logger.info('bot>codp raised exception. Continue on...', exc_info=e)
+
+        # Mass Nonmotorized Database System
         if (datetime.now().hour > START_NMDS) & (retryNMDS > 0):
             retryNMDS = retryNMDS - 1
-            try:
-                postList = nmds.main()
 
-                if (postList is not None) and (len(postList) > 0):
-                    logger.info('NMDS-ms2soft Posts:')
-                    clientTwitter, clientMastodon = make_posts(postList, clientTwitter, clientMastodon)
-                else:
-                    logger.info('No new posts from NMDS-ms2soft (bot>main)')
-            except Exception as e:
-                logger.info('bot>ms2soft.main() raised exception. Continue on...', exc_info=e)
+            # Load list of counters
+            countersNMDS = json.load(open("dataSources/nmds_counters.json", encoding="utf8"))
 
+            for c in countersNMDS:
+                try:
+                    # Load full and daily datasets of counter, create empty df if it doesn't exsist
+                    filename_full = f'data/{c[0]}_full.pkl'
+                    filename_daily = f'data/{c[0]}_daily.pkl'
+                    if Path(filename_full).is_file():
+                        cdf_full = pd.read_pickle(filename_full)
+                    else:
+                        cdf_full = pd.DataFrame(columns=cols_standard)
+                    if Path(filename_daily).is_file():
+                        cdf_daily = pd.read_pickle(filename_daily)
+                    else:
+                        cdf_daily = pd.DataFrame(columns=cols_standard)
+
+                    # Create numpy array of dates with data
+                    datadates = cdf_full['DateTime'].dt.date
+                    # datadates = datadates.unique()
+
+                    # Create a list of dates in the past week without data
+                    datelist = set(pastweek) - set(datadates)
+
+                    # Download data from missing dates
+                    newcdf_full = nmds.main(c, datelist)
+
+                    # Update the daily count dataframe
+                    newcdf_daily = da.daily_counts(newcdf_full)
+
+                    # Add new data to exsisting data
+                    cdf_full = pd.concat([cdf_full, newcdf_full], ignore_index=True)
+                    cdf_daily = pd.concat([cdf_daily, newcdf_daily], ignore_index=True)
+
+                    # Create post list from new data
+                    postlist = da.new_posts(postlist, cdf_daily, newcdf_daily, c)
+
+                    # Save data to file
+                    cdf_full.to_pickle(filename_full, protocol=3)
+                    cdf_daily.to_pickle(filename_daily, protocol=3)
+
+                except Exception as e:
+                    logger.info('bot>nmds raised exception. Continue on...', exc_info=e)
+
+        # Make postings
+        try:
+            if (postlist is not None) and (len(postlist) > 0):
+                logger.info('New Posts:')
+                postList, clientTwitter, clientMastodon = make_posts(postlist,
+                                                                     clientTwitter, clientMastodon)
+
+                with open(filename_postlist, 'wb') as f:
+                    pickle.dump(postList, f)
+
+        except Exception as e:
+            logger.info('bot>make_posts raised exception. Continue on...', exc_info=e)
 
         # Retweet
         try:
@@ -213,11 +325,11 @@ def main():
         # Time for a nap
         # Check for new data every hour until end of posting for the day
         if  datetime.now().hour > END_POSTING:
-            sleep_till()
-            retryCODP = retryCODPinit
-            retryNMDS = retryNMDSinit
-        else:
             sleep_time()
+            retryCODP = RETRY_CODP
+            retryNMDS = RETRY_NMDS
+        else:
+            nap_time()
 
 if __name__ == "__main__":
     main()

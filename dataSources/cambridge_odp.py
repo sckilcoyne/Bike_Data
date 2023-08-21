@@ -14,27 +14,19 @@ https://data.cambridgema.gov/resource/q8v9-mcfg.json
 # pylint: disable=invalid-name, broad-except
 
 # Import standard modules
-import pickle
+# import pickle
 # import time
-import calendar
+# import calendar
 import os
-import sys
+# import sys
 import logging
-from datetime import date, timedelta, datetime
+# from datetime import date, timedelta, datetime
+import datetime
+import json
 
 from sodapy import Socrata
-
-from scipy import stats
+# from scipy import stats
 import pandas as pd
-
-# ?Add project folder to be able to import custom modules?
-sys.path.insert(0,os.getcwd())
-
-# Import custom modules
-# pylint: disable=import-error, wrong-import-position
-import utils.utilFuncs as utils
-import utils.data_analysis as da
-# pylint:enable=import-error, wrong-import-position
 
 cols_standard = ['StationID', 'StationName', 'Mode', 'DateTime', 'Count']
 # StationID: Counter station code
@@ -96,13 +88,13 @@ def save_count_data(newDailyCounts, completeData, rawData):
 
 appToken = ''  # https://dev.socrata.com/docs/app-tokens.html
 
-apiBroadway = 'q8v9-mcfg'
+# apiBroadway = 'q8v9-mcfg'
 cambData = 'data.cambridgema.gov'
 
 
 # %% Query Dataset
 
-def query_api(startDate, endDate):
+def query_api(counterInfo, startDate, endDate):
     """Download data from Socrata API for the Cambridge Totem.
 
     Args:
@@ -131,13 +123,12 @@ def query_api(startDate, endDate):
 
     # First 2000 results, returned as JSON from API / converted to Python list of
     # dictionaries by sodapy.
-    queryData = client.get(apiBroadway, select='*',
-                         where=dateString)
+    queryData = client.get(counterInfo[0], select='*', where=dateString)
 
     if queryData == []:
         logger.error('No downloaded data.')
         # print('print: No downloaded data.')
-        raise Exception('Data Download Failure')
+        raise ValueError('Data Download Failure')
 
     # Convert to pandas DataFrame
     queryData_df = pd.DataFrame.from_records(queryData)
@@ -162,7 +153,7 @@ def query_api(startDate, endDate):
     return queryData_df
 
 
-def query_dataset(broadwayDailyTotals=None):
+def query_dataset(counterInfo, dateList):
     """Determine days not already downloaded from Socrata and download them.
 
     Args:
@@ -171,151 +162,39 @@ def query_dataset(broadwayDailyTotals=None):
     Returns:
         pandas dataframe: New data from Socrata
     """
-    # Determine missing data days to download
-    if broadwayDailyTotals is not None:
-        lastDay = broadwayDailyTotals['Date'].max()
-    else:
-        lastDay = date.today() - timedelta(days=5)
 
-    startDate = lastDay.date() + timedelta(days=1)
-    yesterday = date.today() - timedelta(days=1)
+    startDate = min(dateList)
+    endDate = max(dateList)
 
-    # Download data if not up to date
-    if startDate > yesterday:
-        logger.info('Data up to date.')
-        return None
-    else:
-        downloadDatesStr = 'Download data from ' + \
-            str(startDate) + ' to ' + str(yesterday)
-        logger.info(downloadDatesStr)
+    downloadDatesStr = f'Download data from {startDate} to {endDate}'
+    logger.info(downloadDatesStr)
 
-        # Download data
-        downloadedData_df = query_api(startDate, yesterday)
+    # Download data
+    downloadedData_df = query_api(counterInfo, startDate, endDate)
 
-        check_missing_data(downloadedData_df)
-
-        return downloadedData_df
-
-
-def check_missing_data(downloadedData_df):
-    """[summary]
-
-    Args:
-        downloadedData_df (pandas dataframe): [description]
-    """
-    lastDay = datetime.date(datetime.strptime(
-        downloadedData_df['Date'].max(), '%Y-%m-%dT00:00:00.000'))
-    yesterday = date.today() - timedelta(days=1)
-
-    # print(lastDay, type(lastDay))
-
-    if lastDay < yesterday:
-        firstMissing = lastDay + timedelta(days=1)
-
-        dataUpdateStr = 'NOTE: Data not updated/returned from ' + \
-            str(firstMissing) + ' to ' + str(yesterday) + '\n'
-        logger.info(dataUpdateStr)
-
-
-# def daily_counts(newData):
-#     """[summary]
-
-#     Args:
-#         results_df ([type]): [description]
-
-#     Returns:
-#         [type]: [description]
-#     """
-#     # Total counted for each day
-#     updateDaily = newData.groupby('Date')['Total'].sum().to_frame()
-
-#     updateDaily['Date'] = updateDaily.index.values
-#     updateDaily = updateDaily.astype({'Date': 'datetime64'})
-
-#     updateDaily['Year'] = updateDaily['Date'].dt.year
-#     updateDaily['Month'] = updateDaily['Date'].dt.month
-#     updateDaily['MonthName'] = updateDaily['Date'].dt.month_name()
-#     updateDaily['DayofWeek'] = updateDaily['Date'].dt.day_name()
-#     updateDaily['MonthApprev'] = updateDaily['Date'].dt.strftime('%b')
-
-#     return updateDaily
-
-def standardize_df(newData):
-    '''Clean up scraped data into consistent format for easier working
-    '''
-    stdData = newData
-
-    # Clean up data
-    stdData['DateTime'] = pd.to_datetime(stdData['DateTime'])
-
-    stdData['MonthName'] = stdData['DateTime'].dt.month_name()
-    stdData['Month'] = stdData['DateTime'].dt.month
-    stdData['Time'] = stdData['DateTime'].dt.time
-    stdData['Date'] = stdData['DateTime'].dt.date
-    stdData['Year'] = stdData['DateTime'].dt.year
-    stdData['MonthApprev'] = stdData['DateTime'].dt.strftime('%b')
-
-    stdData.rename(columns = {'Day': 'DayofWeek'}, inplace=True)
-
-    return stdData
+    return downloadedData_df
 
 
 # %% Main
 
-
-def main():
-    """Download new data from Broadway Eco-Totem, clean it, tweet and save.
+def main(counterInfo, datelist):
+    """Download new data from Broadway Eco-Totem, clean it, and save.
 
     Returns:
-        tweetList: List of tweets generated from new data
         newData_df: Dataframe of newly downloaded data
-        newDailyCounts: Daily counts from new data
-        recordsNew: Updated records for Broadway
         completeData: Updated complete history data for Broadway
     """
     logger.info('Execute cambridge_totem>main')
 
-    # Load saved data
-    try:
-        dailyTotals, completeData, rawData = load_count_data()
-    except Exception as e:
-        logger.error('Failed to load pickeled data.',  exc_info=e)
-
     # Download new data
     try:
-        newData_df = query_dataset(dailyTotals)
+        newData_df = query_dataset(counterInfo, datelist)
 
     except Exception as e:
         logger.error('Error updating daily data.',  exc_info=e)
-        return None, None, None, None, None
+        return None
 
-    # Analyze new data
-    else:
-        logger.debug(type(newData_df))
-
-        if newData_df is not None:
-            # Update Raw Data
-            rawData = pd.concat([rawData, newData_df])
-            # Clean up new raw data
-            cleanData = standardize_df(newData_df)
-            # Update Complete Data
-            completeData = pd.concat([completeData, cleanData])
-            # Calculate daily totals
-            newDailyCounts = da.daily_counts(cleanData)
-            # Update daily totals data
-            dailyTotals = pd.concat([dailyTotals, newDailyCounts])
-
-            _, tweetList = format_tweet(dailyTotals,
-                newDailyCounts)
-
-            save_count_data(dailyTotals, completeData, rawData)
-
-            logger.debug(type(newData_df), type(newDailyCounts),
-                          type(tweetList))
-
-            return tweetList, newData_df, newDailyCounts, completeData
-        else:
-            return None, None, None, None, None
+    return newData_df
 
 
 # %% Run Script
@@ -328,10 +207,14 @@ if __name__ == '__main__':
     logger.setLevel('DEBUG')
     logger.debug("Logging is configured.")
 
-    tweets, _, dailyCounts, _, _ = main()
-    if tweets is not None:
-        logger.info(tweets)
-        print(tweets)
-        logger.debug(dailyCounts.tail(10))
-    else:
-        logger.info('No outputs from Cambridge Totem Data')
+    counter_list = json.load(open("codp_counters.json", encoding="utf8"))
+    yday = datetime.datetime.now()-datetime.timedelta(days=2)
+
+    data = main(counter_list[0], [yday])
+
+    # if posts is not None:
+    #     logger.info(posts)
+    #     print(posts)
+    #     logger.debug(dailyCounts.tail(10))
+    # else:
+    #     logger.info('No outputs from Cambridge Open Data Portal')
