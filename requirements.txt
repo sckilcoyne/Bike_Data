@@ -6,24 +6,24 @@
 # https://realpython.com/twitter-bot-python-tweepy/#deploying-bots-to-a-server-using-docker
 
 # Posting
-tweepy==4.12.1
+tweepy==4.14.0
 mastodon.py==1.8.0
 
 # General python
-pandas==1.5.3
-numpy==1.24.2
-scipy==1.10.0
-python-dotenv==0.21.1
+pandas==2.0.3
+numpy==1.25.2
+scipy==1.11.1
+python-dotenv==1.0.0
 
 # Plotting
-matplotlib==3.6.3
-plotly==5.13.0
+matplotlib==3.7.2
+plotly==5.14.1
 
 # Scraping
 sodapy==2.2.0
-beautifulsoup4==4.11.2
-lxml==4.9.2
+beautifulsoup4==4.12.2
+lxml==4.9.3
 
 # Cloud Storage
-google-cloud-storage==2.7.0
+google-cloud-storage==2.10.0
 # pydrive2==1.14.0
