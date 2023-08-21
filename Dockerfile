@@ -6,10 +6,11 @@ FROM python:3.10-slim
 COPY utils /utils
 COPY dataSources /dataSources
 COPY log.conf .
-COPY tweet_bot.py .
+COPY bot_poster.py .
+COPY bot_settings.json .
 
 COPY requirements.txt /tmp
 RUN pip3 install -r /tmp/requirements.txt
 
 
-CMD ["python3", "tweet_bot.py"]
+CMD ["python3", "bot_poster.py"]
