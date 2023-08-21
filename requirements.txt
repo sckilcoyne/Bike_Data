@@ -7,17 +7,17 @@
 
 # Posting
 tweepy==4.14.0
-mastodon.py==1.8.0
+mastodon.py==1.8.1
 
 # General python
 pandas==2.0.3
 numpy==1.25.2
-scipy==1.11.1
+scipy==1.11.2
 python-dotenv==1.0.0
 
 # Plotting
 matplotlib==3.7.2
-plotly==5.14.1
+plotly==5.16.1
 
 # Scraping
 sodapy==2.2.0
