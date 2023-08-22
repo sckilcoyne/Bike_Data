@@ -1,34 +1,60 @@
+# %% Initialize
 import json
-import pandas as pd
-import numpy as np
 import datetime
+from pathlib import Path
+import pandas as pd
 
-# %% Import json files
-counters_nmds = json.load(open("dataSources/nmds_counters.json", encoding="utf8"))
+import dataSources.cambridge_odp as codp
+import dataSources.nmds as nmds
+import utils.data_analysis as da
 
-counters_codp = json.load(open("dataSources/codp_counters.json", encoding="utf8"))
+cols_standard = ['StationID', 'StationName', 'Mode', 'DateTime', 'Count']
 
-bot_settings = json.load(open("bot_settings.json", encoding="utf8"))
+countersNMDS = json.load(open("dataSources/nmds_counters.json", encoding="utf8"))
+countersCODP = json.load(open("dataSources/codp_counters.json", encoding="utf8"))
 
-print(counters_nmds[0])
-print(counters_codp[0])
-# print(bot_settings[0])
+# %% Download Data
 
-# %% Load dataframe
+postlist = []
+# for c in countersNMDS:
+c = countersNMDS[3]
 
-df = pd.read_pickle('data/4001-complete.pkl')
+# Load full and daily datasets of counter, create empty df if it doesn't exsist
+filename_full = f'data/{c[0]}_full.pkl'
+filename_daily = f'data/{c[0]}_daily.pkl'
+if Path(filename_full).is_file():
+    cdf_full = pd.read_pickle(filename_full)
+else:
+    cdf_full = pd.DataFrame(columns=cols_standard)
+    cdf_full = cdf_full.astype({'DateTime': 'datetime64'})
+if Path(filename_daily).is_file():
+    cdf_daily = pd.read_pickle(filename_daily)
+else:
+    cdf_daily = pd.DataFrame(columns=cols_standard)
+    cdf_daily = cdf_daily.astype({'DateTime': 'datetime64'})
 
-# %% Data testing
+# Create numpy array of dates with data
+datadates = cdf_full['DateTime'].dt.date
+# datadates = datadates.unique()
 
-dt = df['DateTime'].dt.date
+# Create a list of dates in the past week without data
+datelist = list(nmds.get_dates(c[0]))
+datelist = [datetime.datetime.strptime(d, "%m/%d/%Y") for d in datelist]
+datelist = datelist[:7]
 
-dtu = dt.unique()
+# Download data from missing dates
+newcdf_full = nmds.main(c, datelist)
 
-# %%
+# Update the daily count dataframe
+newcdf_daily = da.daily_counts(newcdf_full)
 
-today = datetime.datetime.today().date()
+# Add new data to exsisting data
+cdf_full = pd.concat([cdf_full, newcdf_full], ignore_index=True)
+cdf_daily = pd.concat([cdf_daily, newcdf_daily], ignore_index=True)
 
-date_list = [today - datetime.timedelta(days=x+1) for x in range(7)]
+# Create post list from new data
+postlist = da.new_posts(postlist, cdf_daily, newcdf_daily, c)
 
-
-testlist = [today - datetime.timedelta(days=x+3) for x in range(14)]
+# Save data to file
+cdf_full.to_pickle(filename_full, protocol=3)
+cdf_daily.to_pickle(filename_daily, protocol=3)

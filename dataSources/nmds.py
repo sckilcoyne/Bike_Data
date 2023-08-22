@@ -27,6 +27,7 @@ logger = logging.getLogger(__name__)
 
 # %% Download Data
 
+
 def get_all_paths():
     """Generate all possible paths.
 
@@ -35,8 +36,8 @@ def get_all_paths():
     paths to include.
     """
     path_filter = {'directions': [], 'offsets': []}
-    directions = ['East', 'West', 'North', 'South', \
-                  'SouthWest', 'NorthWest', 'SouthEast', 'NorthEast', \
+    directions = ['East', 'West', 'North', 'South',
+                  'SouthWest', 'NorthWest', 'SouthEast', 'NorthEast',
                   'Unspecified']
     pathTypes = ["Bike Lane", "Crosswalk", "Roadway", "Sidewalk", "Bike Path", "Trail", "Combined"]
     for i in directions:
@@ -67,7 +68,7 @@ def fetch_site(site_id, site_name, date=datetime.date(2023, 1, 1)):
     trips = pd.DataFrame(columns=cols_standard)
     for i in data['countData']['IntervalCounts']:
         mode, count, time = i['Mode'], i['Count'], i['IntervalStartTime']['TotalMinutes']
-        t = datetime.time(hour=int(np.floor(time/60)), minute=np.mod(time,60))
+        t = datetime.time(hour=int(np.floor(time/60)), minute=np.mod(time, 60))
         dt = datetime.datetime.combine(date, t)
         trips.loc[len(trips)] = [site_id, site_name, mode, dt, count]
     return trips
@@ -92,6 +93,8 @@ def get_dates(counter_id):
     return dates
 
 # %% Test Functions
+
+
 def run():
     '''Get data for a default counter and date
     '''
@@ -108,6 +111,8 @@ def run_all(date=datetime.date(2023, 8, 10)):
         print(i[1], fetch_site(i[0], date))
 
 # %% Main
+
+
 def main(counterInfo, datelist=None):
     '''Download data from full list of counters for all dates they have data
 
@@ -117,7 +122,7 @@ def main(counterInfo, datelist=None):
     '''
     counterID = counterInfo[0]
     counterName = counterInfo[1]
-    print(counterID)
+    # print(counterID)
     dates = get_dates(counterID)
 
     newdata = pd.DataFrame(columns=cols_standard)
