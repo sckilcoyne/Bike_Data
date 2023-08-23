@@ -79,6 +79,7 @@ def get_dates(counter_id):
 
     Return: Generator of all dates with data
     '''
+    print(f'Get all dates with counts for NMDS station {counter_id}')
     url = "https://mhd.ms2soft.com/tdms.ui/nmds/analysis/GetLocationAttributes"
     # User-Agent filtering is so silly.
     ua = 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7)'
@@ -127,18 +128,29 @@ def main(counterInfo, datelist=None):
 
     newdata = pd.DataFrame(columns=cols_standard)
 
-    # for d in list(dates):
-    for d in dates:
-        print(counterID, d)
-        date = datetime.datetime.strptime(d, "%m/%d/%Y")
-        if date in datelist:
+    print(f'Downloading data for NMDS station {counterID}')
+    if datelist is None:
+        print(f'No datelist given, downloading all dates with counts for counter {counterID}')
+        for d in dates:
+            print(d)
+            date = datetime.datetime.strptime(d, "%m/%d/%Y").date()
             data = fetch_site(counterID, counterName, date)
-        elif date is None:
-            data = fetch_site(counterID, counterName, date)
-        else:
-            data = pd.DataFrame(columns=cols_standard)
+            newdata = pd.concat([newdata, data], ignore_index=True)
+    else:
+        for d in datelist:
+            # date = datetime.datetime.strptime(d, "%m/%d/%Y").date()
+            date = d
+            if date in datelist:
+                data = fetch_site(counterID, counterName, date)
+                print(f'{d} | Date in datelist')
+            else:
+                data = pd.DataFrame(columns=cols_standard)
+                print(f'{d} | No counts availible')
 
-        newdata = pd.concat([newdata, data], ignore_index=True)
+            newdata = pd.concat([newdata, data], ignore_index=True)
+
+    if newdata.shape[0] == 0:
+        newdata = None
 
     return newdata
 

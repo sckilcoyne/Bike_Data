@@ -69,6 +69,7 @@ def load_count_data():
 
     return dailyTotals, completeData, rawData
 
+
 def save_count_data(newDailyCounts, completeData, rawData):
     """Append new daily counts to saved files.
 
@@ -135,20 +136,22 @@ def query_api(counterInfo, startDate, endDate):
 
     # Clean up DataFrame
     queryData_df.rename(columns={'datetime': 'DateTime',
-                               'date': 'Date',
-                               'time': 'Time',
-                               'total': 'Total',
-                               'entries': 'Westbound',
-                               'exits': 'Eastbound'}, inplace=True)
+                                 'date': 'Date',
+                                 'time': 'Time',
+                                 'total': 'Count',
+                                 'entries': 'Westbound',
+                                 'exits': 'Eastbound'}, inplace=True)
 
     queryData_df = queryData_df.astype({'Westbound': int,
-                                    'Eastbound': int,
-                                    'Total': int,
-                                    'DateTime': 'datetime64'})
+                                        'Eastbound': int,
+                                        'Count': int,
+                                        'DateTime': 'datetime64[ns]'})
 
-    queryData_df['Time'] = pd.to_datetime(
-        queryData_df['Time'], format='%H:%M:%S', errors='raise')
-    queryData_df['Year'] = queryData_df['DateTime'].dt.year
+    # Standardize Dataframe
+    queryData_df['StationID'] = counterInfo[0]
+    queryData_df['StationName'] = counterInfo[1]
+    queryData_df['Mode'] = 'Bike'
+    queryData_df = queryData_df[cols_standard + ['Westbound', 'Eastbound']]
 
     return queryData_df
 

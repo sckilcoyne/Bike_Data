@@ -228,22 +228,28 @@ def main():
                     # Create a list of dates in the past week without data
                     datelist = set(pastweek) - set(datadates)
 
-                    # Download data from missing dates
-                    newcdf_full = codp.main(c, datelist)
+                    if len(datelist) > 0:
+                        # Download data from missing dates
+                        newcdf_full = codp.main(c, datelist)
+                    else:
+                        newcdf_full = None
 
-                    # Update the daily count dataframe
-                    newcdf_daily = da.daily_counts(newcdf_full)
+                    if newcdf_full is None:
+                        print('No new data downloaded from CODP')
+                    else:
+                        # Update the daily count dataframe
+                        newcdf_daily = da.daily_counts(newcdf_full)
 
-                    # Add new data to exsisting data
-                    cdf_full = pd.concat([cdf_full, newcdf_full], ignore_index=True)
-                    cdf_daily = pd.concat([cdf_daily, newcdf_daily], ignore_index=True)
+                        # Add new data to exsisting data
+                        cdf_full = pd.concat([cdf_full, newcdf_full], ignore_index=True)
+                        cdf_daily = pd.concat([cdf_daily, newcdf_daily], ignore_index=True)
 
-                    # Create post list from new data
-                    postlist = da.new_posts(postlist, cdf_daily, newcdf_daily, c)
+                        # Create post list from new data
+                        postlist = da.new_posts(postlist, cdf_daily, newcdf_daily, c)
 
-                    # Save data to file
-                    cdf_full.to_pickle(filename_full, protocol=3)
-                    cdf_daily.to_pickle(filename_daily, protocol=3)
+                        # Save data to file
+                        cdf_full.to_pickle(filename_full, protocol=3)
+                        cdf_daily.to_pickle(filename_daily, protocol=3)
 
                 except Exception as e:
                     logger.info('bot>codp raised exception. Continue on...', exc_info=e)
@@ -276,22 +282,28 @@ def main():
                     # Create a list of dates in the past week without data
                     datelist = set(pastweek) - set(datadates)
 
-                    # Download data from missing dates
-                    newcdf_full = nmds.main(c, datelist)
+                    if len(datelist) > 0:
+                        # Download data from missing dates
+                        newcdf_full = nmds.main(c, datelist)
+                    else:
+                        newcdf_full = None
 
-                    # Update the daily count dataframe
-                    newcdf_daily = da.daily_counts(newcdf_full)
+                    if newcdf_full is None:
+                        print('No new data downloaded from NMDS')
+                    else:
+                        # Update the daily count dataframe
+                        newcdf_daily = da.daily_counts(newcdf_full)
 
-                    # Add new data to exsisting data
-                    cdf_full = pd.concat([cdf_full, newcdf_full], ignore_index=True)
-                    cdf_daily = pd.concat([cdf_daily, newcdf_daily], ignore_index=True)
+                        # Add new data to exsisting data
+                        cdf_full = pd.concat([cdf_full, newcdf_full], ignore_index=True)
+                        cdf_daily = pd.concat([cdf_daily, newcdf_daily], ignore_index=True)
 
-                    # Create post list from new data
-                    postlist = da.new_posts(postlist, cdf_daily, newcdf_daily, c)
+                        # Create post list from new data
+                        postlist = da.new_posts(postlist, cdf_daily, newcdf_daily, c)
 
-                    # Save data to file
-                    cdf_full.to_pickle(filename_full, protocol=3)
-                    cdf_daily.to_pickle(filename_daily, protocol=3)
+                        # Save data to file
+                        cdf_full.to_pickle(filename_full, protocol=3)
+                        cdf_daily.to_pickle(filename_daily, protocol=3)
 
                 except Exception as e:
                     logger.info('bot>nmds raised exception. Continue on...', exc_info=e)

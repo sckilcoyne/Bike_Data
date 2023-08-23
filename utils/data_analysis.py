@@ -92,10 +92,11 @@ def post_note(dailyTotals, date):
     percentileStr = ''
     for f in filters:
         selection = dailyTotals[(dailyTotals.Mode.isin(MODES)) & (
-            dailyTotals.DateTime.dt.month_name().isin(f[0])) & (dailyTotals.DateTime.dt.day_name().isin(f[1]))]
+            dailyTotals.DateTime.dt.month_name().isin(f[0])) & (
+            dailyTotals.DateTime.dt.day_name().isin(f[1]))]
 
         if selection.shape[0] > 4:
-            percentile = stats.percentileofscore(selection['Total'], count)
+            percentile = stats.percentileofscore(selection['Count'], count)
             percentileVal = f'{percentile:.0f}'
             logger.info('%s percentile of trips for %s', percentileVal, f[2])
 
