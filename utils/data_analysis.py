@@ -47,7 +47,7 @@ def daily_counts(newData):
         directionCols].sum().reset_index()
 
     newDaily = newDaily.rename(columns={"Date": "DateTime"})
-    newDaily = newDaily.astype({'DateTime': 'datetime64'})
+    newDaily = newDaily.astype({'DateTime': 'datetime64[ns]'})
 
     return newDaily
 

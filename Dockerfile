@@ -7,7 +7,6 @@ COPY utils /utils
 COPY dataSources /dataSources
 COPY log.conf .
 COPY bot_poster.py .
-COPY bot_settings.json .
 
 COPY requirements.txt /tmp
 RUN pip3 install -r /tmp/requirements.txt

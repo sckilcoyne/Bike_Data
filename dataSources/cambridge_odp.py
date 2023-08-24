@@ -18,7 +18,7 @@ https://data.cambridgema.gov/resource/q8v9-mcfg.json
 # import time
 # import calendar
 import os
-# import sys
+import sys
 import logging
 # from datetime import date, timedelta, datetime
 import datetime
@@ -27,6 +27,8 @@ import json
 from sodapy import Socrata
 # from scipy import stats
 import pandas as pd
+
+sys.path.append("..") # Add parent directory to search path
 
 cols_standard = ['StationID', 'StationName', 'Mode', 'DateTime', 'Count']
 # StationID: Counter station code
@@ -187,7 +189,8 @@ def main(counterInfo, datelist):
         newData_df: Dataframe of newly downloaded data
         completeData: Updated complete history data for Broadway
     """
-    logger.info('Execute cambridge_totem>main')
+    counterID = counterInfo[0]
+    logger.info('Downloading data for NMDS station %s', counterID)
 
     # Download new data
     try:
@@ -210,7 +213,7 @@ if __name__ == '__main__':
     logger.setLevel('DEBUG')
     logger.debug("Logging is configured.")
 
-    counter_list = json.load(open("codp_counters.json", encoding="utf8"))
+    counter_list = json.load(open("settings/counters_codp.json", encoding="utf8"))
     yday = datetime.datetime.now()-datetime.timedelta(days=2)
 
     data = main(counter_list[0], [yday])

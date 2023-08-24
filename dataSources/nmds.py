@@ -6,12 +6,16 @@ Origininally written by https://github.com/crschmidt
 https://github.com/crschmidt/bikes/tree/main/mass_nmds
 '''
 # %% Initialize
+import sys
 import datetime
+import time
 import json
 import logging
 import requests
 import pandas as pd
 import numpy as np
+
+sys.path.append("..") # Add parent directory to search path
 
 cols_standard = ['StationID', 'StationName', 'Mode', 'DateTime', 'Count']
 # StationID: Counter station code
@@ -62,13 +66,13 @@ def fetch_site(site_id, site_name, date=datetime.date(2023, 1, 1)):
     params['pathFiltersStr'] = json.dumps(get_all_paths())
 
     r = requests.post(url=url, data=params,
-                      headers={'User-Agent': ua}, timeout=10)
+                      headers={'User-Agent': ua}, timeout=30)
 
     data = json.loads(r.content)
     trips = pd.DataFrame(columns=cols_standard)
     for i in data['countData']['IntervalCounts']:
-        mode, count, time = i['Mode'], i['Count'], i['IntervalStartTime']['TotalMinutes']
-        t = datetime.time(hour=int(np.floor(time/60)), minute=np.mod(time, 60))
+        mode, count, min = i['Mode'], i['Count'], i['IntervalStartTime']['TotalMinutes']
+        t = datetime.time(hour=int(np.floor(min/60)), minute=np.mod(min, 60))
         dt = datetime.datetime.combine(date, t)
         trips.loc[len(trips)] = [site_id, site_name, mode, dt, count]
     return trips
@@ -79,7 +83,7 @@ def get_dates(counter_id):
 
     Return: Generator of all dates with data
     '''
-    print(f'Get all dates with counts for NMDS station {counter_id}')
+    logger.info('Get all dates with counts for NMDS station %s', counter_id)
     url = "https://mhd.ms2soft.com/tdms.ui/nmds/analysis/GetLocationAttributes"
     # User-Agent filtering is so silly.
     ua = 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7)'
@@ -128,11 +132,11 @@ def main(counterInfo, datelist=None):
 
     newdata = pd.DataFrame(columns=cols_standard)
 
-    print(f'Downloading data for NMDS station {counterID}')
+    logger.info('Downloading data for NMDS station %s', counterID)
     if datelist is None:
-        print(f'No datelist given, downloading all dates with counts for counter {counterID}')
+        logger.info('No datelist given, downloading all dates with counts for counter %s', counterID)
         for d in dates:
-            print(d)
+            logger.info('%s', d)
             date = datetime.datetime.strptime(d, "%m/%d/%Y").date()
             data = fetch_site(counterID, counterName, date)
             newdata = pd.concat([newdata, data], ignore_index=True)
@@ -142,10 +146,11 @@ def main(counterInfo, datelist=None):
             date = d
             if date in datelist:
                 data = fetch_site(counterID, counterName, date)
-                print(f'{d} | Date in datelist')
+                logger.info('%s | Date in datelist', d)
+                time.sleep(1)
             else:
                 data = pd.DataFrame(columns=cols_standard)
-                print(f'{d} | No counts availible')
+                logger.info('%s | No counts availible', d)
 
             newdata = pd.concat([newdata, data], ignore_index=True)
 
@@ -166,7 +171,7 @@ if __name__ == "__main__":
 
     yesterday = datetime.datetime.now()-datetime.timedelta(days=2)
 
-    counter_list = json.load(open("nmds_counters.json", encoding="utf8"))
+    counter_list = json.load(open("settings/counters_nmds.json", encoding="utf8"))
 
     # run_all(yesterday)
     # fetch_all_dates()

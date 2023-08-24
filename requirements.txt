@@ -21,8 +21,8 @@ plotly==5.16.1
 
 # Scraping
 sodapy==2.2.0
-beautifulsoup4==4.12.2
-lxml==4.9.3
+# beautifulsoup4==4.12.2
+# lxml==4.9.3
 
 # Cloud Storage
 google-cloud-storage==2.10.0

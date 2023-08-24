@@ -7,7 +7,7 @@ Created on Mon Nov 29 20:21:23 2021
 # %% Initialize
 # pylint: disable=invalid-name, broad-except
 
-from datetime import datetime
+import datetime
 import time
 
 import os
@@ -18,7 +18,7 @@ import logging.config
 import json
 import pickle
 import pandas as pd
-# import numpy as np
+import numpy as np
 # pylint: disable=import-error
 import utils.configTwitterBot as configTwitter
 import utils.config_mastodon as configMastodon
@@ -49,20 +49,28 @@ bucket_name = os.getenv('GCS_BUCKET_NAME')
 logger.info('bucket_name: %s', bucket_name)
 
 # %% Settings
-settings = json.load(open("bot_settings.json", encoding="utf8"))
+settings = json.load(open("settings/bot_settings.json", encoding="utf8"))
+logger.info('Loaded bot settings')
 
 # Hours to run features
 START_POSTING = settings['PostStart_Bot']
 START_CODP = settings['PostStart_NMDS']
 START_NMDS = settings['PostStart_CODP']
 END_POSTING = settings['PostEnd_Bot']
+logger.info('Start posting: %s', START_POSTING)
+logger.info('Start CODP: %s', START_CODP)
+logger.info('Start NMDS: %s', START_NMDS)
+logger.info('End posting: %s', END_POSTING)
 
 # Limit how many posts to make at a time
 BURST_LIMIT = settings['PostBurstLimit']
+logger.info('Post burst limit: %s', BURST_LIMIT)
 
 # Limit how many times per day to retry
 RETRY_CODP = settings['RetryLimit_NMDS']
 RETRY_NMDS = settings['RetryLimit_CODP']
+logger.info('Daily CODP limit: %s', RETRY_CODP)
+logger.info('Daily NMDS limit: %s', RETRY_NMDS)
 
 
 # %% Bot sleep functions
@@ -73,14 +81,14 @@ def sleep_time(wakeTime=START_POSTING):
     Args:
         wakeTime (int, optional): Hour to sleep until. Defaults to 8.
     """
-    now = datetime.now()
+    now = datetime.datetime.now()
 
     if now.hour > wakeTime:
         day = now.day + 1
     else:
         day = now.day
 
-    wakeTime = datetime(now.year, now.month, day, wakeTime, 0, 0)
+    wakeTime = datetime.datetime(now.year, now.month, day, wakeTime, 0, 0)
 
     logger.info('Sleep from now (%s) until %s', now, wakeTime)
     time.sleep((wakeTime - now).seconds)
@@ -90,7 +98,7 @@ def nap_time(timeSleep=1*60*60):
 
     Default: 1 hour
     """
-    now = datetime.now().strftime('%H:%M:%S')
+    now = datetime.datetime.now().strftime('%H:%M:%S')
 
     logger.info('Sleep for %s hours at %s', timeSleep/3600, now)
     time.sleep(timeSleep)
@@ -100,8 +108,8 @@ def nap_time(timeSleep=1*60*60):
 def create_API_clients():
     '''Create API clients to post
     '''
-    clientTwitter = create_twitter_client
-    clientMastodon = create_mastodon_client
+    clientTwitter = create_twitter_client()
+    clientMastodon = create_mastodon_client()
 
     return clientTwitter, clientMastodon
 
@@ -136,9 +144,9 @@ def make_post(post, clientTwitter, clientMastodon):
     logger.info(post)
 
     if clientTwitter is None:
-        clientTwitter = create_twitter_client
+        clientTwitter = create_twitter_client()
     if clientMastodon is None:
-        clientMastodon = create_mastodon_client
+        clientMastodon = create_mastodon_client()
 
     try:
         clientTwitter.create_tweet(text=post)
@@ -160,10 +168,6 @@ def make_posts(postList, clientTwitter, clientMastodon):
         # Only create so many posts at a time, remove created posts from list of posts to be made
         clientTwitter, clientMastodon = make_post(postList[0], clientTwitter, clientMastodon)
         del postList[0]
-
-    # for p in list(postList): # Iterate over copy of list to remove from list along way
-        # clientTwitter, clientMastodon = make_post(p, clientTwitter, clientMastodon)
-        # postList.remove(p)
 
     return postList, clientTwitter, clientMastodon
 
@@ -196,46 +200,54 @@ def main():
         if Path(filename_postlist).is_file():
             with open(filename_postlist, 'rb') as f:
                 postlist = pickle.load(f)
-            # postlist = pd.read_pickle(filename_postlist)
         else:
-            postlist = pd.Series()
+            postlist = []
 
         # Cambridge Open Data Portal
-        if (datetime.now().hour > START_CODP) & (retryCODP > 0):
+        if (datetime.datetime.now().hour > START_CODP) & (retryCODP > 0):
             retryCODP = retryCODP - 1
 
             # Load list of counters
-            countersCODP = json.load(open("dataSources/codp_counters.json", encoding="utf8"))
+            countersCODP = json.load(open("settings/counters_codp.json", encoding="utf8"))
 
             for c in countersCODP:
+                logger.info('\nCODP counter: %s', c[0])
                 try:
                     # Load full and daily datasets of counter, create empty df if it doesn't exsist
                     filename_full = f'data/{c[0]}_full.pkl'
                     filename_daily = f'data/{c[0]}_daily.pkl'
                     if Path(filename_full).is_file():
                         cdf_full = pd.read_pickle(filename_full)
+                        logger.info('Read pickled full data')
                     else:
                         cdf_full = pd.DataFrame(columns=cols_standard)
+                        logger.info('No full data set, creating an empty one')
                     if Path(filename_daily).is_file():
                         cdf_daily = pd.read_pickle(filename_daily)
+                        logger.info('Read pickled daily data')
                     else:
                         cdf_daily = pd.DataFrame(columns=cols_standard)
+                        logger.info('No daily data set, creating an empty one')
 
                     # Create numpy array of dates with data
-                    datadates = cdf_full['DateTime'].dt.date
-                    # datadates = datadates.unique()
+                    if len(cdf_full) > 0:
+                        datadates = cdf_full['DateTime'].dt.date
+                    else:
+                        datadates = np.array([])
 
                     # Create a list of dates in the past week without data
                     datelist = set(pastweek) - set(datadates)
 
                     if len(datelist) > 0:
+                        logger.info('Datelist has %s dates', len(datelist))
                         # Download data from missing dates
                         newcdf_full = codp.main(c, datelist)
                     else:
+                        logger.info('Datelist is empty')
                         newcdf_full = None
 
                     if newcdf_full is None:
-                        print('No new data downloaded from CODP')
+                        logger.info('No new data downloaded from CODP')
                     else:
                         # Update the daily count dataframe
                         newcdf_daily = da.daily_counts(newcdf_full)
@@ -250,46 +262,56 @@ def main():
                         # Save data to file
                         cdf_full.to_pickle(filename_full, protocol=3)
                         cdf_daily.to_pickle(filename_daily, protocol=3)
+                        logger.info('Updated datasets saved')
 
                 except Exception as e:
                     logger.info('bot>codp raised exception. Continue on...', exc_info=e)
 
         # Mass Nonmotorized Database System
-        if (datetime.now().hour > START_NMDS) & (retryNMDS > 0):
+        if (datetime.datetime.now().hour > START_NMDS) & (retryNMDS > 0):
             retryNMDS = retryNMDS - 1
 
             # Load list of counters
-            countersNMDS = json.load(open("dataSources/nmds_counters.json", encoding="utf8"))
+            countersNMDS = json.load(open("settings/counters_nmds.json", encoding="utf8"))
 
             for c in countersNMDS:
+                logger.info('\nNMDS counter: %s', c[0])
                 try:
                     # Load full and daily datasets of counter, create empty df if it doesn't exsist
                     filename_full = f'data/{c[0]}_full.pkl'
                     filename_daily = f'data/{c[0]}_daily.pkl'
                     if Path(filename_full).is_file():
                         cdf_full = pd.read_pickle(filename_full)
+                        logger.info('Read pickled full data')
                     else:
                         cdf_full = pd.DataFrame(columns=cols_standard)
+                        logger.info('No full data set, creating an empty one')
                     if Path(filename_daily).is_file():
                         cdf_daily = pd.read_pickle(filename_daily)
+                        logger.info('Read pickled daily data')
                     else:
                         cdf_daily = pd.DataFrame(columns=cols_standard)
+                        logger.info('No daily data set, creating an empty one')
 
                     # Create numpy array of dates with data
-                    datadates = cdf_full['DateTime'].dt.date
-                    # datadates = datadates.unique()
+                    if len(cdf_full) > 0:
+                        datadates = cdf_full['DateTime'].dt.date
+                    else:
+                        datadates = np.array([])
 
                     # Create a list of dates in the past week without data
                     datelist = set(pastweek) - set(datadates)
 
                     if len(datelist) > 0:
+                        logger.info('Datelist has %s dates', len(datelist))
                         # Download data from missing dates
                         newcdf_full = nmds.main(c, datelist)
                     else:
+                        logger.info('Datelist is empty')
                         newcdf_full = None
 
                     if newcdf_full is None:
-                        print('No new data downloaded from NMDS')
+                        logger.info('No new data downloaded from NMDS')
                     else:
                         # Update the daily count dataframe
                         newcdf_daily = da.daily_counts(newcdf_full)
@@ -304,6 +326,7 @@ def main():
                         # Save data to file
                         cdf_full.to_pickle(filename_full, protocol=3)
                         cdf_daily.to_pickle(filename_daily, protocol=3)
+                        logger.info('Updated datasets saved')
 
                 except Exception as e:
                     logger.info('bot>nmds raised exception. Continue on...', exc_info=e)
@@ -311,12 +334,17 @@ def main():
         # Make postings
         try:
             if (postlist is not None) and (len(postlist) > 0):
-                logger.info('New Posts:')
-                postList, clientTwitter, clientMastodon = make_posts(postlist,
+                # Save post list before trying to create posts on services
+                with open(filename_postlist, 'wb') as f:
+                    pickle.dump(postlist, f)
+
+                logger.info('Make new posts from list with %s items', len(postlist))
+                postlist, clientTwitter, clientMastodon = make_posts(postlist,
                                                                      clientTwitter, clientMastodon)
 
+                # Save modified post list after creating posts
                 with open(filename_postlist, 'wb') as f:
-                    pickle.dump(postList, f)
+                    pickle.dump(postlist, f)
 
         except Exception as e:
             logger.info('bot>make_posts raised exception. Continue on...', exc_info=e)
@@ -336,7 +364,7 @@ def main():
 
         # Time for a nap
         # Check for new data every hour until end of posting for the day
-        if  datetime.now().hour > END_POSTING:
+        if  datetime.datetime.now().hour > END_POSTING:
             sleep_time()
             retryCODP = RETRY_CODP
             retryNMDS = RETRY_NMDS
