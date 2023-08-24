@@ -1,0 +1,62 @@
+[
+    [
+        "4001",
+        "#MinutemanBikeway - Lexington"
+    ],
+    [
+        "4005",
+        "#MinutemanBikeway - Arlington"
+    ],
+    [
+        "4006",
+        "#NorthernStrand - Malden"
+    ],
+    [
+        "6004_NB",
+        "Mass Ave Bridge NB"
+    ],
+    [
+        "6004_SB",
+        "Mass Ave Bridge SB"
+    ],
+    [
+        "6005_NB",
+        "BU Bridge NB"
+    ],
+    [
+        "6005_SB",
+        "BU Bridge SB"
+    ],
+    [
+        "4004_NB",
+        "Wellington Bridge (Fellsway Rte 28) NB"
+    ],
+    [
+        "4004_SB",
+        "Wellington Bridge (Fellsway Rte 28) SB"
+    ],
+    [
+        "ST_DCR_003 ",
+        "#SouthwestCorridor, W Newton St"
+    ],
+    [
+        "ST_DCR_006 ",
+        "#SouthwestCorridor, Prentiss St"
+    ],
+    [
+        "ST_DCR_002 ",
+        "#SouthwestCorridor, Roxbury Crossing Station"
+    ],
+    [
+        "ST_DCR_004 ",
+        "#SouthwestCorridor, Jackson Square Station"
+    ],
+    [
+        "ST_DCR_005 ",
+        "#SouthwestCorridor, Stonybrook Station"
+    ],
+    [
+        "ST_DCR_005 ",
+        "#SouthwestCorridor, Williams St"
+    ]
+]
