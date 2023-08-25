@@ -166,8 +166,15 @@ def make_posts(postList, clientTwitter, clientMastodon):
 
     for _ in range(BURST_LIMIT):
         # Only create so many posts at a time, remove created posts from list of posts to be made
-        clientTwitter, clientMastodon = make_post(postList[0], clientTwitter, clientMastodon)
-        del postList[0]
+        try:
+            if len(postList) > 0:
+                p = postList[0]
+                clientTwitter, clientMastodon = make_post(p, clientTwitter, clientMastodon)
+                del postList[0]
+            else:
+                logger.info('Post list now empty')
+        except Exception as e:
+            logger.info('bot.make_posts raised exception. Continue on...', exc_info=e)
 
     return postList, clientTwitter, clientMastodon
 
