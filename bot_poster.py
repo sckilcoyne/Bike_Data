@@ -49,28 +49,37 @@ bucket_name = os.getenv('GCS_BUCKET_NAME')
 logger.info('bucket_name: %s', bucket_name)
 
 # %% Settings
-settings = json.load(open("settings/bot_settings.json", encoding="utf8"))
-logger.info('Loaded bot settings')
+def load_settings():
+    '''Load settings for bot from setting file
+    
+    Return all the settings
+    '''
+    settings = json.load(open("settings/bot_settings.json", encoding="utf8"))
+    logger.info('Loaded bot settings')
 
-# Hours to run features
-START_POSTING = settings['PostStart_Bot']
-START_CODP = settings['PostStart_NMDS']
-START_NMDS = settings['PostStart_CODP']
-END_POSTING = settings['PostEnd_Bot']
-logger.info('Start posting: %s', START_POSTING)
-logger.info('Start CODP: %s', START_CODP)
-logger.info('Start NMDS: %s', START_NMDS)
-logger.info('End posting: %s', END_POSTING)
+    # Hours to run features
+    start_posting = settings['PostStart_Bot']
+    start_codp = settings['PostStart_NMDS']
+    start_nmds = settings['PostStart_CODP']
+    end_posting = settings['PostEnd_Bot']
+    logger.info('Start posting: %s', start_posting)
+    logger.info('Start CODP: %s', start_codp)
+    logger.info('Start NMDS: %s', start_nmds)
+    logger.info('End posting: %s', end_posting)
 
-# Limit how many posts to make at a time
-BURST_LIMIT = settings['PostBurstLimit']
-logger.info('Post burst limit: %s', BURST_LIMIT)
+    # Limit how many posts to make at a time
+    burst_limit = settings['PostBurstLimit']
+    logger.info('Post burst limit: %s', burst_limit)
 
-# Limit how many times per day to retry
-RETRY_CODP = settings['RetryLimit_NMDS']
-RETRY_NMDS = settings['RetryLimit_CODP']
-logger.info('Daily CODP limit: %s', RETRY_CODP)
-logger.info('Daily NMDS limit: %s', RETRY_NMDS)
+    # Limit how many times per day to retry
+    retry_codp = settings['RetryLimit_NMDS']
+    retry_nmds = settings['RetryLimit_CODP']
+    logger.info('Daily CODP limit: %s', retry_codp)
+    logger.info('Daily NMDS limit: %s', retry_nmds)
+
+    return start_posting, start_codp, start_nmds, end_posting, burst_limit, retry_codp, retry_nmds
+
+START_POSTING, START_CODP, START_NMDS, END_POSTING, BURST_LIMIT, RETRY_CODP, RETRY_NMDS = load_settings()
 
 
 # %% Bot sleep functions
@@ -100,7 +109,7 @@ def nap_time(timeSleep=1*60*60):
     """
     now = datetime.datetime.now().strftime('%H:%M:%S')
 
-    logger.info('Sleep for %s hours at %s', timeSleep/3600, now)
+    logger.info('Nap for %s hour(s) at %s', timeSleep/3600, now)
     time.sleep(timeSleep)
 
 
@@ -160,11 +169,11 @@ def make_post(post, clientTwitter, clientMastodon):
 
     return clientTwitter, clientMastodon
 
-def make_posts(postList, clientTwitter, clientMastodon):
+def make_posts(postList, clientTwitter, clientMastodon, burst_limit=BURST_LIMIT):
     '''Create posts for a list posts on all services
     '''
 
-    for _ in range(BURST_LIMIT):
+    for _ in range(burst_limit):
         # Only create so many posts at a time, remove created posts from list of posts to be made
         try:
             if len(postList) > 0:
@@ -182,7 +191,7 @@ def make_posts(postList, clientTwitter, clientMastodon):
 # %% Bot
 
 
-def main():
+def main(retry_codp, retry_nmds):
     """
     All of the functions for the Posting bot.
 
@@ -194,11 +203,14 @@ def main():
     # Create API clients to post
     clientTwitter, clientMastodon = create_API_clients()
 
-    retryCODP = RETRY_CODP
-    retryNMDS = RETRY_NMDS
+    retryCODP = retry_codp
+    retryNMDS = retry_nmds
 
     # Continuously scrape new data and post updates
     while True:
+        # pylint: disable=redefined-outer-name, line-too-long
+        START_POSTING, START_CODP, START_NMDS, END_POSTING, BURST_LIMIT, RETRY_CODP, RETRY_NMDS = load_settings()
+        # pylint: enable=redefined-outer-name, line-too-long
 
         today = datetime.datetime.today().date()
         pastweek = [today - datetime.timedelta(days=x+1) for x in range(7)]
@@ -347,7 +359,8 @@ def main():
 
                 logger.info('Make new posts from list with %s items', len(postlist))
                 postlist, clientTwitter, clientMastodon = make_posts(postlist,
-                                                                     clientTwitter, clientMastodon)
+                                                                     clientTwitter, clientMastodon,
+                                                                     BURST_LIMIT)
 
                 # Save modified post list after creating posts
                 with open(filename_postlist, 'wb') as f:
@@ -372,11 +385,11 @@ def main():
         # Time for a nap
         # Check for new data every hour until end of posting for the day
         if  datetime.datetime.now().hour > END_POSTING:
-            sleep_time()
+            sleep_time(START_POSTING)
             retryCODP = RETRY_CODP
             retryNMDS = RETRY_NMDS
         else:
             nap_time()
 
 if __name__ == "__main__":
-    main()
+    main(RETRY_CODP, RETRY_NMDS)
