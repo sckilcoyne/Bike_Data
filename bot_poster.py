@@ -26,7 +26,7 @@ from utils import google_cloud
 import utils.data_analysis as da
 from dataSources import cambridge_odp as codp
 from dataSources import nmds
-from dataSources import retweeter
+# from dataSources import retweeter
 # pylint: enable=import-error
 
 
@@ -350,10 +350,10 @@ def main():
             logger.info('bot>make_posts raised exception. Continue on...', exc_info=e)
 
         # Retweet
-        try:
-            retweeter.main(clientTwitter)
-        except Exception as e:
-            logger.info('bot>retweeter.main() raised exception. Continue on...', exc_info=e)
+        # try:
+        #     retweeter.main(clientTwitter)
+        # except Exception as e:
+        #     logger.info('bot>retweeter.main() raised exception. Continue on...', exc_info=e)
 
 
         # Upload all modified files to google cloud
