@@ -1,6 +1,7 @@
 # Ignore directories
 secrets/
 data/
+hubway/data/
 testing/
 pages/9_*
 
