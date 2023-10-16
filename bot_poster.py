@@ -314,20 +314,12 @@ def main(retry_codp, retry_nmds):
 
                     # Create numpy array of dates with data
                     if len(cdf_full) > 0:
-                        datadates = cdf_full['DateTime'].dt.date
+                        downloadedDates = cdf_full['DateTime'].dt.date
                     else:
-                        datadates = np.array([])
+                        downloadedDates = None
 
-                    # Create a list of dates in the past week without data
-                    datelist = set(pastweek) - set(datadates)
-
-                    if len(datelist) > 0:
-                        logger.info('Datelist has %s dates', len(datelist))
-                        # Download data from missing dates
-                        newcdf_full = nmds.main(c, datelist)
-                    else:
-                        logger.info('Datelist is empty')
-                        newcdf_full = None
+                    # Download data from counter
+                    newcdf_full = nmds.main(c, downloadedDates)
 
                     if newcdf_full is None:
                         logger.info('No new data downloaded from NMDS')

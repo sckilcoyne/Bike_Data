@@ -10,6 +10,7 @@ import logging
 import numpy as np
 import pandas as pd
 from scipy import stats
+import datetime
 
 # pylint: disable=invalid-name
 
@@ -136,7 +137,9 @@ def new_posts(postlist, alldf, newdf, stationInfo):
     '''
     newposts = []
     for _, newdate in newdf.iterrows():
-        if newdate.Mode in MODES:
+        dateDiff = (datetime.datetime.today().date() - newdate['DateTime'].date()).days
+        if (newdate.Mode in MODES) & (dateDiff < 4):
+            # Only create posts for bike counts within the past few days
             newposts.append(format_post(alldf, stationInfo, newdate))
 
     postlist.extend(newposts)

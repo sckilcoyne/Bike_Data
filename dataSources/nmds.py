@@ -71,8 +71,8 @@ def fetch_site(site_id, site_name, date=datetime.date(2023, 1, 1)):
     data = json.loads(r.content)
     trips = pd.DataFrame(columns=cols_standard)
     for i in data['countData']['IntervalCounts']:
-        mode, count, min = i['Mode'], i['Count'], i['IntervalStartTime']['TotalMinutes']
-        t = datetime.time(hour=int(np.floor(min/60)), minute=np.mod(min, 60))
+        mode, count, minute = i['Mode'], i['Count'], i['IntervalStartTime']['TotalMinutes']
+        t = datetime.time(hour=int(np.floor(minute/60)), minute=np.mod(minute, 60))
         dt = datetime.datetime.combine(date, t)
         trips.loc[len(trips)] = [site_id, site_name, mode, dt, count]
     return trips
@@ -118,41 +118,42 @@ def run_all(date=datetime.date(2023, 8, 10)):
 # %% Main
 
 
-def main(counterInfo, datelist=None):
+def main(counterInfo, downloadedDates=None):
     '''Download data from full list of counters for all dates they have data
 
     Save data for each counter location in a labeled file
 
-    datelist: List of dates to download. If not given, download all dates availible.
+    downloadedDates: List of dates already downloaded.
     '''
     counterID = counterInfo[0]
     counterName = counterInfo[1]
     # print(counterID)
-    dates = get_dates(counterID)
+    dataDates = get_dates(counterID)
 
     newdata = pd.DataFrame(columns=cols_standard)
 
     logger.info('Downloading data for NMDS station %s', counterID)
-    if datelist is None:
-        logger.info('No datelist given, downloading all dates with counts for counter %s', counterID)
-        for d in dates:
-            logger.info('%s', d)
+    if downloadedDates is None:
+        logNote = f'No datelist given, downloading all dates with counts for counter {counterID}'
+        logger.info(logNote)
+        for d in dataDates:
             date = datetime.datetime.strptime(d, "%m/%d/%Y").date()
             data = fetch_site(counterID, counterName, date)
-            newdata = pd.concat([newdata, data], ignore_index=True)
-    else:
-        for d in datelist:
-            # date = datetime.datetime.strptime(d, "%m/%d/%Y").date()
-            date = d
-            if date in datelist:
-                data = fetch_site(counterID, counterName, date)
-                logger.info('%s | Date in datelist', d)
-                time.sleep(1)
-            else:
-                data = pd.DataFrame(columns=cols_standard)
-                logger.info('%s | No counts availible', d)
 
             newdata = pd.concat([newdata, data], ignore_index=True)
+            logger.info('Downloaded %s', d)
+            time.sleep(1) # Don't download from NMDS too fast
+    else:
+        downloadedDatesStr = [datetime.datetime.strftime(d, "%m/%d/%Y") for d in downloadedDates]
+        for d in dataDates:
+            # For each date NMDS has data, check if already downloaded. If not, download the data.
+            if d not in downloadedDatesStr:
+                date = datetime.datetime.strptime(d, "%m/%d/%Y").date()
+                data = fetch_site(counterID, counterName, date)
+
+                newdata = pd.concat([newdata, data], ignore_index=True)
+                logger.info('Downloaded %s', d)
+                time.sleep(1) # Don't download from NMDS too fast
 
     if newdata.shape[0] == 0:
         newdata = None
