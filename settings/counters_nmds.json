@@ -28,6 +28,26 @@
         "BU Bridge SB"
     ],
     [
+        "6006_WB",
+        "Longfellow Bridge WB"
+    ],
+    [
+        "6006_EB",
+        "Longfellow Bridge EB"
+    ],
+    [
+    	"6003_WB",
+    	"Charles River Dam Road WB"
+    ],
+    [
+    	"6003_2_EB",
+    	"Charles River Dam Road EB"
+    ],
+    [
+    	"6007",
+    	"Neponset River Trail"
+    ],
+    [
         "4004_NB",
         "Wellington Bridge (Fellsway Rte 28) NB"
     ],
@@ -36,27 +56,27 @@
         "Wellington Bridge (Fellsway Rte 28) SB"
     ],
     [
-        "ST_DCR_003 ",
+        "ST_DCR_003",
         "#SouthwestCorridor, W Newton St"
     ],
     [
-        "ST_DCR_006 ",
+        "ST_DCR_006",
         "#SouthwestCorridor, Prentiss St"
     ],
     [
-        "ST_DCR_002 ",
+        "ST_DCR_002",
         "#SouthwestCorridor, Roxbury Crossing Station"
     ],
     [
-        "ST_DCR_004 ",
+        "ST_DCR_004",
         "#SouthwestCorridor, Jackson Square Station"
     ],
     [
-        "ST_DCR_005 ",
+        "ST_DCR_005",
         "#SouthwestCorridor, Stonybrook Station"
     ],
     [
-        "ST_DCR_005 ",
+        "ST_DCR_005",
         "#SouthwestCorridor, Williams St"
     ]
 ]

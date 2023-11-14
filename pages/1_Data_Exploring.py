@@ -12,6 +12,7 @@ from plotly import graph_objs as go
 from google.oauth2 import service_account
 from google.cloud import storage
 
+print('\n---Page 1: Data Exploring---\n')
 # ?Add project folder to be able to import custom modules?
 sys.path.insert(0,os.getcwd())
 
@@ -33,14 +34,13 @@ client = storage.Client(credentials=credentials)
 # %% Set up streamlit
 st.set_page_config(page_title='Boston Bike Data',
                    page_icon=':bike:',)
-st.title('[Boston Bike Data](https://twitter.com/BostonBikeData)')
+st.title('Boston Bike Data\n[Twitter](https://twitter.com/BostonBikeData) [Mastodon](https://better.boston/@BostonBikeData)')
 
 # tabFig, tabTest = st.tabs(['Data', 'Test'])
 
 # %% Import Data
 
-# Uses st.experimental_memo to only rerun when the query changes or after timeout.
-@st.experimental_memo(ttl=60*60*24)
+# @st.cache_data(ttl=60*60*24)
 def read_pickle(fileName):
     """Read file from Google Cloud Storage
 
@@ -55,58 +55,60 @@ def read_pickle(fileName):
     data = pickle.loads(content)
     return data
 
-@st.cache(hash_funcs={pd.DataFrame: lambda _: None}, ttl=60*60*12)
+@st.cache_data(hash_funcs={pd.DataFrame: lambda _: None}, ttl=60*60*12)
 def import_prep_data(fileName):
-    """_summary_
 
-    Args:
-        dataFolder (_type_): _description_
-
-    Returns:
-        _type_: _description_
-    """
     print(f'Downloading {fileName}')
     # Import Data
-    dailyTotals = read_pickle(f'{fileName}-daily_totals.pkl')
-    completeData = read_pickle(f'{fileName}-complete.pkl')
+    dailyTotals = read_pickle(f'{fileName}_daily.pkl')
+    completeData = read_pickle(f'{fileName}_full.pkl')
+
+    # st.dataframe(dailyTotals.head())
+    # st.dataframe(completeData.head())
 
     # Daily Totals
-    dailyTotals.index = pd.to_datetime(dailyTotals.index)
+    dailyTotals.index = pd.to_datetime(dailyTotals.DateTime)
 
     # Get path directions
     dirList = ['Northbound', 'Southbound', 'Eastbound', 'Westbound']
-    # print(f'\n\n\n\n{list(completeData)=}')
+    print(f'\n{list(completeData)=}')
     directions = list(set(dirList) & set(list(completeData)))
-    # print(f'{directions=}')
+    print(f'\n{directions=}')
+
+    dailyTotals['Month'] = dailyTotals['DateTime'].dt.month
+    dailyTotals['MonthName'] = dailyTotals['DateTime'].dt.strftime('%b')
+    dailyTotals['DayofWeek'] = dailyTotals['DateTime'].dt.day_name()
+    dailyTotals['Year'] = dailyTotals['DateTime'].dt.year
 
     # st.write(dailyTotals.head(5))
-
-    dailyTotals['MonthApprev'] = dailyTotals['Date'].dt.strftime('%b')
-
     dailyTotals.sort_values(by=['DayofWeek', 'Month'], ascending=True, inplace=True)
 
     # print(f'\n\nimport_prep_data: {dailyTotals.columns=}')
 
     dayGroups = dailyTotals.groupby(['DayofWeek','Month'])
-    dailyTotals['PercentilesTotal'] = dayGroups['Total'].transform('rank', pct=True)
+    dailyTotals['PercentilesTotal'] = dayGroups['Count'].transform('rank', pct=True)
     dailyTotals['Percentiles100Total'] = dailyTotals['PercentilesTotal'] * 100
-    for direction in directions:
-        dailyTotals[f'Percentiles{direction}'] = dayGroups[direction].transform('rank', pct=True)
-        dailyTotals[f'Percentiles100{direction}'] = dailyTotals[f'Percentiles{direction}'] * 100
+    # for direction in directions:
+    #     dailyTotals[f'Percentiles{direction}'] = dayGroups[direction].transform('rank', pct=True)
+    #     dailyTotals[f'Percentiles100{direction}'] = dailyTotals[f'Percentiles{direction}'] * 100
 
     dailyTotals.sort_index(ascending=True, inplace=True)
 
     # Full dataset
+    completeData['Date'] = completeData['DateTime'].dt.date
     completeData['Hour'] = completeData['DateTime'].dt.hour
-    # print(completeData.columns)
+    completeData['Year'] = completeData['DateTime'].dt.year
+    completeData['Month'] = completeData['DateTime'].dt.strftime('%b')
+    completeData['DayofWeek'] = completeData['DateTime'].dt.day_name()
+    print(f'{completeData.columns=}')
 
     # Create Hourly dataset
     hourlyTotals = []
-    columns=['Date', 'Year', 'Month', 'Day', 'Hour', 'Total']
+    columns=['Date', 'Year', 'Month', 'DayofWeek', 'Hour', 'Count']
     columns.extend(directions)
 
     for _, group in completeData.groupby(['Date', 'Hour']):
-        hourTotal = group['Total'].sum()
+        hourTotal = group['Count'].sum()
 
         row = [group.Date.iloc[0], group.Year.iloc[0],
                 group.Month.iloc[0], group.DayofWeek.iloc[0],
@@ -126,22 +128,18 @@ def import_prep_data(fileName):
     # print(f'{columns=}')
     hourlyTotals = pd.DataFrame(hourlyTotals, columns=columns)
 
-    hourlyTotals['day_percentTotal'] = hourlyTotals['Total'] / hourlyTotals.groupby('Date')['Total'].transform('sum')
+    hourlyTotals['day_percentCount'] = hourlyTotals['Count'] / \
+                                        hourlyTotals.groupby('Date')['Count'].transform('sum')
     for direction in directions:
-        hourlyTotals[f'day_percent{direction}'] = hourlyTotals[direction] / hourlyTotals.groupby('Date')[direction].transform('sum')
+        hourlyTotals[f'day_percent{direction}'] = hourlyTotals[direction] / \
+                                                    hourlyTotals.groupby('Date')[direction].transform('sum')
 
-    return dailyTotals, completeData, hourlyTotals
+    return dailyTotals, hourlyTotals, completeData
 
 # %% Plotting
-def plot_daily_per(stationName, dailyTotals, countDirection='Total'):
+def plot_daily_per(stationName, dailyTotals, countDirection='Count'):
     """Plot daily percentile (per day of week and month) for each day over time
-
-    Args:
-        dailyTotals (_type_): _description_
-
-    Returns:
-        _type_: _description_
-    """    
+    """
     fig = go.Figure()
     # plotType = st.radio('Plot Type', ['Normalized', 'Counts'], horizontal = True,)
 
@@ -155,7 +153,7 @@ def plot_daily_per(stationName, dailyTotals, countDirection='Total'):
         hovertemplate= '%{x}' + '<br>%{y:d} percentile'))
     fig.add_trace(go.Scatter(
         x = dailyTotals.index,
-        y = dailyTotals[f'Percentiles100{countDirection}'].rolling(28).mean(),
+        y = dailyTotals[f'Percentiles100{countDirection}'].rolling(28, min_periods=21).mean(),
         name = '28 Day Rolling Avg',
         xhoverformat="%d%b%Y",
         hovertemplate= '%{x}' + '<br>%{y:d} percentile',
@@ -185,11 +183,11 @@ def plot_daily_per(stationName, dailyTotals, countDirection='Total'):
 
 def plot_monthly_vol(stationName, dailyTotals, countDirection='Total'):
     """Plot box plots for each month
-
-    Args:
-        dailyTotals (_type_): _description_
-    """    
+    """
     monthGroups = dailyTotals.groupby(['Month'])
+
+    if countDirection == 'Total':
+        countDirection = 'Count'
 
     fig = go.Figure()
     for name, group in monthGroups:
@@ -210,25 +208,25 @@ def plot_monthly_vol(stationName, dailyTotals, countDirection='Total'):
 
 def plot_daily_vol(stationName, dailyTotals, countDirection='Total'):
     """Plot box plots for each day of week for each month
-
-    Args:
-        dailyTotals (_type_): _description_
     """
     weekdays = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday']
     weekends = ['Saturday', 'Sunday']
+
+    if countDirection == 'Total':
+        countDirection = 'Count'
 
     fig = go.Figure()
 
     weekdayTotals = dailyTotals[dailyTotals['DayofWeek'].isin(weekdays)]
     fig.add_trace(go.Box(
-        x = [weekdayTotals['MonthApprev'], weekdayTotals['DayofWeek']],
+        x = [weekdayTotals['MonthName'], weekdayTotals['DayofWeek']],
         y = weekdayTotals[countDirection],
         name='Weekdays'
         ))
 
     weekendTotals = dailyTotals[dailyTotals['DayofWeek'].isin(weekends)]
     fig.add_trace(go.Box(
-        x = [weekendTotals['MonthApprev'], weekendTotals['DayofWeek']],
+        x = [weekendTotals['MonthName'], weekendTotals['DayofWeek']],
         y = weekendTotals[countDirection],
         name='Weekends'
         ))
@@ -249,13 +247,11 @@ def plot_daily_vol(stationName, dailyTotals, countDirection='Total'):
 
 def plot_hourly_per(stationName, hourlyData, countDirection='Total'):
     """Plot ridership volume distributions by hour
+    """
 
-    Args:
-        hourlyData (_type_): _description_
+    if countDirection == 'Total':
+        countDirection = 'Count'
 
-    Returns:
-        _type_: _description_
-    """    
     fig = go.Figure()
     # print(f'\n\n\nplot_hourly_per: {countDirection=}')
     # print(f'plot_hourly_per: {list(hourlyData)=}')
@@ -290,7 +286,7 @@ def plot_all_daily(dataSources):
         stationDaily[counter] = dailyTotals['Percentiles100Total']
         fig.add_trace(go.Scatter(
             x = dailyTotals.index,
-            y = dailyTotals['Percentiles100Total'].rolling(28).mean(),
+            y = dailyTotals['Percentiles100Total'].rolling(28, min_periods=21).mean(),
             name = counter,
             mode='markers',
             marker_size=2,
@@ -303,7 +299,7 @@ def plot_all_daily(dataSources):
 
     fig.add_trace(go.Scatter(
         x = stationDaily.index,
-        y = stationDaily['mean'].rolling(28).mean(),
+        y = stationDaily['mean'].rolling(28, min_periods=21).mean(),
         name = 'Mean',
         xhoverformat="%d%b%Y",
         hovertemplate= '%{y:d} percentile',
@@ -341,45 +337,22 @@ def main():
         https://plotly.com/python/scattermapbox/
     '''
     dataSources = ust.dataSources
-    # dataSources =  {'Broadway - Cambridge': {
-    #                     'FileName': 'broadway',
-    #                     'Directions': ['Total', 'Westbound', 'Eastbound'],
-    #                     },
-    #                 'Minuteman - Arlington': {
-    #                     'FileName': '4005',
-    #                     'Directions': ['Total', 'Northbound', 'Southbound'],
-    #                     },
-    #                 'Minuteman - Lexington':{
-    #                     'FileName': '4001',
-    #                     'Directions': ['Total', 'Northbound', 'Southbound'],
-    #                     },
-    #                 'Northen Strand - Malden':{
-    #                     'FileName': '4006',
-    #                     'Directions': ['Total', 'Westbound', 'Eastbound'],
-    #                     },
-    #                 'Fellsway NB - Medford':{
-    #                     'FileName': '4004_NB',
-    #                     'Directions': ['Total'], # Only show total for 1 direction
-    #                     },
-    #                 'Fellsway SB - Medford':{
-    #                     'FileName': '4004_SB',
-    #                     'Directions': ['Total'], # Only show total for 1 direction
-    #                     },
-    #                 }
 
     singles, everything = st.tabs(['Indiviual Counters', 'Compare Counters'])
 
     with singles:
-        dataName = st.selectbox('Data Source',dataSources.keys())
+        dataName = st.selectbox('Data Source', dataSources.keys())
         dataSource = dataSources[dataName]
-        
-        dailyTotals, completeData, hourlyTotals = import_prep_data(dataSource['FileName'])
+
+        dailyTotals, hourlyTotals, completeData = import_prep_data(dataSource['FileName'])
+        # dailyTotals = import_prep_data(dataSource['FileName'])
 
         # print(f'{dataSources=}')
 
-        direction = st.radio('Count Direction', dataSource['Directions'],
-                                horizontal = True,)
-        
+        # direction = st.radio('Count Direction', dataSource['Directions'],
+        #                         horizontal = True,)
+        direction = 'Total'
+
         # st.dataframe(dailyTotals)
         # st.write(dailyTotals.head(5))
 
@@ -396,8 +369,9 @@ def main():
         st.plotly_chart(figDailyVol)
 
     with everything:
-        fig_all_daily = plot_all_daily(dataSources)
-        st.plotly_chart(fig_all_daily)
+        st.write('Work in progress')
+    #     fig_all_daily = plot_all_daily(dataSources)
+    #     st.plotly_chart(fig_all_daily)
 
 # %% Streamlit Script
 main()
