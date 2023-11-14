@@ -40,7 +40,7 @@ st.title('Boston Bike Data\n[Twitter](https://twitter.com/BostonBikeData) [Masto
 
 # %% Import Data
 
-# @st.cache_data(ttl=60*60*24)
+@st.cache_data(ttl=60*60*24)
 def read_pickle(fileName):
     """Read file from Google Cloud Storage
 
