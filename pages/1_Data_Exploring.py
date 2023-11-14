@@ -259,7 +259,7 @@ def plot_hourly_per(stationName, hourlyData, countDirection='Total'):
     for name, group in hourlyData.groupby(['Hour']):
         # print(f'{name=}')
         trace = go.Box()
-        trace.name = name
+        trace.name = f'{name:,}'
         trace.y = group[f'day_percent{countDirection}']
         fig.add_trace(trace)
 
