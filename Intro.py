@@ -7,8 +7,10 @@ import pandas as pd
 import plotly.express as px
 import plotly.graph_objects as go
 
+print('\n---Start---\n')
+
 # ?Add project folder to be able to import custom modules?
-sys.path.insert(0,os.getcwd())
+sys.path.insert(0, os.getcwd())
 
 # Import custom modules
 # pylint: disable=import-error, wrong-import-position
@@ -33,14 +35,15 @@ def plot_source_map():
     dataSources.reset_index(inplace=True)
     dataSources = dataSources.rename(columns = {'index':'counterName'})
 
+    # st.dataframe(dataSources)
 
     # add map:
     #         https://docs.streamlit.io/library/api-reference/charts/st.map
     #         https://plotly.com/python/scattermapbox/
     dataSources['urlLink'] = [f'<a href="{url}/">Click here</a>' for url in dataSources['url']]
-    dataSources['size'] = 7
+    dataSources['size'] = 1
 
-    # st.write(dataSources)
+    # st.dataframe(dataSources)
     fig = px.scatter_mapbox(dataSources, lat='Lat', lon='Long',
                             # name='----',
                             # mode= 'markers',
@@ -50,8 +53,8 @@ def plot_source_map():
                             },
                             labels={'urlLink': 'Data Source'},
                             color_discrete_sequence=['blue'],
-                            zoom=11,
-                            size='size',
+                            zoom=10,
+                            # size='size',
                             # height=300,
                             )
     fig.update_layout(mapbox_style="open-street-map",
