@@ -153,7 +153,7 @@ def plot_daily_per(stationName, dailyTotals, countDirection='Count'):
         hovertemplate= '%{x}' + '<br>%{y:d} percentile'))
     fig.add_trace(go.Scatter(
         x = dailyTotals.index,
-        y = dailyTotals[f'Percentiles100{countDirection}'].rolling(28, min_periods=21).mean(),
+        y = dailyTotals[f'Percentiles100{countDirection}'].rolling('28d', min_periods=14).mean(),
         name = '28 Day Rolling Avg',
         xhoverformat="%d%b%Y",
         hovertemplate= '%{x}' + '<br>%{y:d} percentile',
@@ -189,19 +189,23 @@ def plot_monthly_vol(stationName, dailyTotals, countDirection='Total'):
     if countDirection == 'Total':
         countDirection = 'Count'
 
+    ylim = 0
     fig = go.Figure()
     for name, group in monthGroups:
         # print(f'{name=}')
         monthname = group['MonthName'][0]
         # print(f'{monthname=}')
-        trace = go.Box()
+        # trace = go.Box()
+        trace = go.Violin()
         trace.name = monthname
         trace.y = group[countDirection]
+        ylim = max(ylim, group[countDirection].max())
         fig.add_trace(trace)
     fig.update_layout(
         title=f'Monthly Ridership Volume Distibutions [{stationName}]',
         xaxis_title='Month',
         yaxis_title='Ridership Volume',
+        yaxis_range=[0, ylim*1.1],
         showlegend=False)
 
     return fig
@@ -258,9 +262,11 @@ def plot_hourly_per(stationName, hourlyData, countDirection='Total'):
 
     for name, group in hourlyData.groupby(['Hour']):
         # print(f'{name=}')
-        if isinstance(name, tuple): # Some reason local and hosted streamlit think name is a different type
+        if isinstance(name, tuple):
+            # Some reason local and hosted streamlit think name is a different type
             name = name[0]
-        trace = go.Box()
+        # trace = go.Box()
+        trace = go.Violin(points=False)
         trace.name = f'{name:,}'
         trace.y = group[f'day_percent{countDirection}']
         fig.add_trace(trace)
@@ -270,7 +276,9 @@ def plot_hourly_per(stationName, hourlyData, countDirection='Total'):
         xaxis_title='Hour',
         yaxis_title='Daily Ridership Volume Percent',
         showlegend=False,
-        yaxis=dict(tickformat=".0%")
+        yaxis=dict(tickformat=".0%"),
+        yaxis_range=[0,.4],
+        xaxis_range=[4.5,23.5]
     )
 
     # st.dataframe(hourlyData)
@@ -288,7 +296,7 @@ def plot_all_daily(dataSources):
         stationDaily[counter] = dailyTotals['Percentiles100Total']
         fig.add_trace(go.Scatter(
             x = dailyTotals.index,
-            y = dailyTotals['Percentiles100Total'].rolling(28, min_periods=21).mean(),
+            y = dailyTotals['Percentiles100Total'].rolling('28d', min_periods=14).mean(),
             name = counter,
             mode='markers',
             marker_size=2,
@@ -301,7 +309,7 @@ def plot_all_daily(dataSources):
 
     fig.add_trace(go.Scatter(
         x = stationDaily.index,
-        y = stationDaily['mean'].rolling(28, min_periods=21).mean(),
+        y = stationDaily['mean'].rolling('28d', min_periods=14).mean(),
         name = 'Mean',
         xhoverformat="%d%b%Y",
         hovertemplate= '%{y:d} percentile',
