@@ -258,6 +258,8 @@ def plot_hourly_per(stationName, hourlyData, countDirection='Total'):
 
     for name, group in hourlyData.groupby(['Hour']):
         # print(f'{name=}')
+        if isinstance(name, tuple): # Some reason local and hosted streamlit think name is a different type
+            name = name[0]
         trace = go.Box()
         trace.name = f'{name:,}'
         trace.y = group[f'day_percent{countDirection}']
