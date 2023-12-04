@@ -29,4 +29,4 @@ google-cloud-storage==2.13.0
 # pydrive2==1.14.0
 
 # Dashboard
-streamlit==1.28.2
+streamlit==1.29.0
