@@ -4,7 +4,8 @@ https://www.cambridgema.gov/streetsandtransportation/projectsandprograms/gardens
 https://stackoverflow.com/questions/56017702/how-to-extract-table-from-pdf-in-python
 '''
 # %% Initialize
-from datetime import datetime, timedelta
+# from datetime import datetime, timedelta
+import datetime
 import numpy as np
 import pandas as pd
 import glob
@@ -17,13 +18,14 @@ import matplotlib.pyplot as plt
 from matplotlib.path import Path
 import matplotlib.dates as mdates
 import matplotlib.ticker as mtick
-# import matplotlib as mpl
+import matplotlib as mpl
 from matplotlib.legend_handler import HandlerPathCollection
 
 from scipy import stats
 
 import cartopy.crs as ccrs
 from cartopy.io.img_tiles import OSM
+
 
 # %% Files
 
@@ -207,8 +209,8 @@ def collect_data():
     dfAll[['Bicycles', 'Cars', 'Total']] = dfAll[[
         'Bicycles', 'Cars', 'Total']].apply(pd.to_numeric)
 
-    dfAll.to_csv('all_garden_data.csv')
-    dfAll.to_pickle('all_garden_data.pkl')
+    dfAll.to_csv(f'{folder}/all_garden_data.csv')
+    dfAll.to_pickle(f'{folder}/all_garden_data.pkl')
 
     return dfAll
 
@@ -216,11 +218,13 @@ def collect_data():
 
 
 def import_bluebikes():
-    dfBB = pd.read_csv('bluebikes.txt', header=0)
+    dfBB = pd.read_csv(f'{folder}/bluebikes.txt', header=0)
     dfBB['BB_Growth_frac'] = dfBB['Rides'] / dfBB['Rides'][0]
     dfBB['BB_Growth_100'] = dfBB['BB_Growth_frac'] * 100
     dfBB['BB_Growth_0'] = dfBB['BB_Growth_100'] - 100
     dfBB['Date'] = pd.to_datetime(dfBB['Date'])
+    dfBB.set_index('Date', drop=False, inplace=True)
+    dfBB.index.rename('DateIdx', inplace=True)
 
     # dfBB['BB_Growth_0'].plot()
 
@@ -228,17 +232,20 @@ def import_bluebikes():
 
 
 def import_broadway():
-    df = pd.read_pickle('broadway-daily_totals.pkl')
+    df = pd.read_pickle(f'{folder}/broadway-daily_totals.pkl')
 
     dfBway = pd.DataFrame(df['Total'][df['Date'] > "2022-10-11"])
     dfBway['Broadway_Growth_frac'] = dfBway['Total'] / dfBway['Total'][0]
     dfBway['Broadway_Growth_100'] = dfBway['Broadway_Growth_frac'] * 100
     dfBway['Broadway_Growth_0'] = dfBway['Broadway_Growth_100'] - 100
 
-    dfBway.index.names = ['Idx']
-    dfBway['Date'] = dfBway.index
+    # dfBway.index.names = ['Idx']
+    dfBway.reset_index(inplace=True)
+    # dfBway['Date'] = dfBway.index
     dfBway['Date'] = pd.to_datetime(dfBway['Date'])
-    dfBway = dfBway.reset_index()
+    # dfBway = dfBway.reset_index()
+    dfBway.set_index('Date', drop=False, inplace=True)
+    dfBway.index.rename('DateIdx', inplace=True)
 
     return dfBway
 
@@ -278,10 +285,11 @@ def data_analysis(dfData, dfBB, dfBway):
         ['Bicycles', 'Cars', 'Total']].sum()
     dfDate = dfDate.reset_index()
     dfDate['Datetime'] = pd.to_datetime(dfDate['Datetime'])
-    dfDate = dfDate.sort_values(by='Datetime')
+    dfDate = dfDate.sort_values(by='Datetime').set_index('Datetime', drop=False).rename(columns={'Datetime': 'Date'})
+    dfDate.index.rename('DateIdx', inplace=True)
 
     # Calculate middle day of count groups
-    meanCountDate = dfDate.groupby(dfDate.Datetime.dt.month)['Datetime'].mean()
+    meanCountDate = dfDate.groupby(dfDate.Date.dt.month)['Date'].mean()
 
     # Calculate count locations per day weighted mean of counts
     dayTotal = dfData.groupby([dfData.Datetime.dt.date])[['Bicycles']].sum()
@@ -294,7 +302,7 @@ def data_analysis(dfData, dfBB, dfBway):
     dfNormalizedMean['Datetime_col'] = pd.to_datetime(dfNormalizedMean['Datetime_col'])
     dfNormalizedMean = pd.concat((meanCountDate,
                                   dfNormalizedMean['Norm'].groupby(dfNormalizedMean.Datetime_col.dt.month).mean()), axis=1)
-    dfNormalizedMean.sort_values('Datetime', inplace=True, ignore_index=True)
+    dfNormalizedMean.sort_values('Date', inplace=True, ignore_index=True)
 
     # Calculate mode share
     dfDate['Bike_Car_Share'] = dfDate['Bicycles'] / (dfDate['Cars'] + dfDate['Bicycles']) * 100
@@ -305,25 +313,25 @@ def data_analysis(dfData, dfBB, dfBway):
 
     # Changes in ridership relative to initial count day
     growthSummary = pd.concat((meanCountDate,
-                               dfDate.groupby(dfDate.Datetime.dt.month)['Bike_Growth_frac'].mean(),
-                               dfDate.groupby(dfDate.Datetime.dt.month)['Bike_Growth_0'].mean(),
-                               dfDate.groupby(dfDate.Datetime.dt.month)['Bike_Growth_100'].mean()),
+                               dfDate.groupby(dfDate.Date.dt.month)['Bike_Growth_frac'].mean(),
+                               dfDate.groupby(dfDate.Date.dt.month)['Bike_Growth_0'].mean(),
+                               dfDate.groupby(dfDate.Date.dt.month)['Bike_Growth_100'].mean()),
                               axis=1)
     growthSummary.index.names = ['Idx']
 
-    growthSummary['Quantile_50'] = dfDate.groupby(dfDate.Datetime.dt.month)[
+    growthSummary['Quantile_50'] = dfDate.groupby(dfDate.Date.dt.month)[
         'Bike_Growth_0'].quantile(q=0.5)
-    growthSummary['Quantile_25'] = dfDate.groupby(dfDate.Datetime.dt.month)[
+    growthSummary['Quantile_25'] = dfDate.groupby(dfDate.Date.dt.month)[
         'Bike_Growth_0'].quantile(q=0.25)
-    growthSummary['Quantile_75'] = dfDate.groupby(dfDate.Datetime.dt.month)[
+    growthSummary['Quantile_75'] = dfDate.groupby(dfDate.Date.dt.month)[
         'Bike_Growth_0'].quantile(q=0.75)
-    growthSummary['growth_geoMean'] = dfDate.groupby(dfDate.Datetime.dt.month)[
-        'Bike_Growth_100'].transform(stats.gmean)
+    # growthSummary['growth_geoMean'] = dfDate.groupby(dfDate.Date.dt.month)[
+    #     'Bike_Growth_100'].transform(stats.gmean)
 
-    growthSummary.sort_values('Datetime', inplace=True, ignore_index=True)
+    growthSummary.sort_values('Date', inplace=True, ignore_index=True)
 
     # Bluebikes data
-    countdatesBluebikes = dfBB[dfBB['Date'].isin(dfDate['Datetime'].unique())]
+    countdatesBluebikes = dfBB[dfBB['Date'].isin(dfDate['Date'].unique())]
 
     countdatesBluebikes = pd.concat((meanCountDate,
                                      countdatesBluebikes.groupby(countdatesBluebikes.Date.dt.month)[
@@ -332,13 +340,14 @@ def data_analysis(dfData, dfBB, dfBway):
                                          'BB_Growth_0'].mean(),
                                      countdatesBluebikes.groupby(countdatesBluebikes.Date.dt.month)['BB_Growth_100'].mean()),
                                     axis=1)
-    countdatesBluebikes.sort_values('Datetime', inplace=True, ignore_index=True)
+    countdatesBluebikes.index.rename('Idx', inplace=True)
+    countdatesBluebikes.sort_values('Date', inplace=True, ignore_index=True)
     growthSummary['Bluebikes_frac'] = countdatesBluebikes['BB_Growth_frac']
     growthSummary['Bluebikes_0'] = countdatesBluebikes['BB_Growth_0']
     growthSummary['Bluebikes_100'] = countdatesBluebikes['BB_Growth_100']
 
     # Braodway Data
-    countdatesBroadway = dfBway[dfBway['Date'].isin(dfDate['Datetime'].unique())]
+    countdatesBroadway = dfBway[dfBway['Date'].isin(dfDate['Date'].unique())]
     countdatesBroadway = pd.concat((meanCountDate,
                                     countdatesBroadway.groupby(countdatesBroadway.Date.dt.month)[
                                         'Broadway_Growth_frac'].mean(),
@@ -347,42 +356,80 @@ def data_analysis(dfData, dfBB, dfBway):
                                     countdatesBroadway.groupby(countdatesBroadway.Date.dt.month)[
                                         'Broadway_Growth_100'].mean()),
                                    axis=1)
-    countdatesBroadway.sort_values('Datetime', inplace=True, ignore_index=True)
+    countdatesBroadway.index.rename('Idx', inplace=True)
+    countdatesBroadway.sort_values('Date', inplace=True, ignore_index=True)
     growthSummary['Broadway_frac'] = countdatesBroadway['Broadway_Growth_frac']
     growthSummary['Broadway_0'] = countdatesBroadway['Broadway_Growth_0']
     growthSummary['Broadway_100'] = countdatesBroadway['Broadway_Growth_100']
+
+    # Baseline
+    dfBaseline = pd.DataFrame()
+    dfBaseline['Baseline_Growth_frac'] = pd.concat([dfBB['BB_Growth_frac'], dfBway['Broadway_Growth_frac']], axis=1).mean(axis=1)
+    dfBaseline['Baseline_Growth_100'] = pd.concat([dfBB['BB_Growth_100'], dfBway['Broadway_Growth_100']], axis=1).mean(axis=1)
+    dfBaseline['Baseline_Growth_0'] = pd.concat([dfBB['BB_Growth_0'], dfBway['Broadway_Growth_0']], axis=1).mean(axis=1)
+    dfBaseline['Baseline_Rolling_0'] = dfBaseline['Baseline_Growth_0'].rolling('28D').mean()
+    growthSummary['Baseline_frac'] = growthSummary[['Bluebikes_frac', 'Broadway_frac']].mean(axis=1)
+    growthSummary['Baseline_100'] = growthSummary[['Bluebikes_100', 'Broadway_100']].mean(axis=1)
+    growthSummary['Baseline_0'] = growthSummary[['Bluebikes_0', 'Broadway_0']].mean(axis=1)
 
     # Adjusted growths
     growthSummary['Adjusted_Growth_BB_100'] = 100 * growthSummary['Bike_Growth_frac'] / \
         growthSummary['Bluebikes_frac']
     growthSummary['Adjusted_Growth_Bway_100'] = 100 * growthSummary['Bike_Growth_frac'] / \
         growthSummary['Broadway_frac']
+    growthSummary['Adjusted_Growth_Baseline_100'] = 100 * growthSummary['Bike_Growth_frac'] / \
+        growthSummary['Baseline_frac']
     growthSummary['Adjusted_Growth_BB_0'] = growthSummary['Adjusted_Growth_BB_100'] - 100
     growthSummary['Adjusted_Growth_Bway_0'] = growthSummary['Adjusted_Growth_Bway_100'] - 100
+    growthSummary['Adjusted_Growth_Baseline_0'] = growthSummary['Adjusted_Growth_Baseline_100'] - 100
 
     # dfDate['Adjusted_Growth'] = (((dfDate['Bike_Growth'] + 100)/100) / ((growthMean['Bluebikes'] + 100)/100) * 100 ) - 100
 
     # Bike mode share by count group
-    shareMean = pd.concat((dfDate.groupby(dfDate.Datetime.dt.month)['Bike_Car_Share'].mean(
-    ), dfDate.groupby(dfDate.Datetime.dt.month)['Datetime'].mean()), axis=1)
+    shareMean = pd.concat((dfDate.groupby(dfDate.Date.dt.month)['Bike_Car_Share'].mean(
+    ), dfDate.groupby(dfDate.Date.dt.month)['Date'].mean()), axis=1)
     shareMean.index.names = ['Idx']
-    shareMean.sort_values('Datetime', inplace=True, ignore_index=True)
+    shareMean.sort_values('Date', inplace=True, ignore_index=True)
     growthSummary['Bike_Car_Share'] = shareMean['Bike_Car_Share']
 
-    # dateMin = mdates.date2num(dfDate.Datetime.min())
-    # dateMax = mdates.date2num(dfDate.Datetime.max())
+    # dateMin = mdates.date2num(dfDate.Date.min())
+    # dateMax = mdates.date2num(dfDate.Date.max())
 
-    return growthSummary, dfDate, dfNormalizedMean
+    return growthSummary, dfDate, dfNormalizedMean, dfBaseline
 
 
 # %% Plots
-markersize = 10
+figsize = (15, 9)
+dpi = 100
+
+markersize = 15
+linewidth = 5
 s = 75
 
+def project_marker(ax):
+    projectDate = datetime.date(2022,11,17)
+    ax.axvline(x=projectDate,
+               linewidth=4,
+               color='gray')
+    
+    ax.text(projectDate - datetime.timedelta(days=1), 0.5,
+            'Bike lane installation complete',
+            # rotation=90,
+            horizontalalignment='right',
+            verticalalignment='center',
+            rotation='vertical',
+            transform=ax.get_xaxis_text1_transform(0)[0])
+
+    return ax
+
+def watermark(ax):
+    ax.text(0.05, 0.01, '@BostonBikeData | BCU Labs', transform=ax.transAxes)
+
+    return ax
 
 def plot_mode_share(df, dfDate):
     # Plot mode share over time
-    fig = plt.figure(figsize=(15, 9), dpi=600)
+    fig = plt.figure(figsize=figsize, dpi=dpi)
     ax = fig.add_subplot(1, 1, 1)
     ax.yaxis.set_major_formatter(mtick.PercentFormatter())
 
@@ -390,11 +437,15 @@ def plot_mode_share(df, dfDate):
     plt.plot(df['Datetime'], df['Bike_Car_Share'],
              color='purple', marker='o', markersize=markersize,
              markerfacecolor='none', markeredgecolor='purple',
+             linewidth=linewidth,
              label='Month Average')
 
     for loc in dfDate.groupby('Location'):
         ax.scatter(loc[1]['Datetime'], loc[1]
                    ['Bike_Car_Share'], label=loc[0], marker='.', s=s)
+
+    # Add line for project completion
+    ax = project_marker(ax)
 
     # Annotate
     shareMax = df['Bike_Car_Share'].max()
@@ -427,36 +478,46 @@ def plot_mode_share(df, dfDate):
     plt.ylabel('Bike Mode Share')
     plt.suptitle(
         'Bike/Car Mode Share on streets near Garden Street Safety Improvement Project')
-    plt.title('Garden St. project implemented in Novemeber 2022')
-    ax.text(0.1, 0.01, '@BostonBikeData', transform=ax.transAxes)
+    # plt.title('Garden St. project implemented in Novemeber 2022')
+    ax = watermark(ax)
     plt.show()
-    fig.savefig('bike_modeshare.png', bbox_inches='tight')
+    fig.savefig(f'{folder}/bike_modeshare.png', bbox_inches='tight')
 
 
-def plot_bike_growth(df, dfDate, dfBB, dfBway, dfTotal):
+def plot_bike_growth(df, dfDate, dfBB, dfBway, dfTotal, dfBaseline):
     # Plot bike growth over time
-    fig = plt.figure(figsize=(15, 9), dpi=600)
+    fig = plt.figure(figsize=figsize, dpi=dpi)
     ax = fig.add_subplot(1, 1, 1)
     ax.yaxis.set_major_formatter(mtick.PercentFormatter())
 
     # Plot mean growth numbers
-    plt.plot(df['Datetime'], df['Bike_Growth_0'],
-             color='red', marker='o', markersize=markersize, markerfacecolor='none', markeredgecolor='r',
+    plt.plot(df['Date'], df['Bike_Growth_0'],
+             color='red', marker='o', markersize=markersize, 
+             markerfacecolor='none', markeredgecolor='r',
+             linewidth=linewidth,
              label='Month Average')
 
-    # Plot Bluebikes data
-    plt.plot(dfBB['Date'], dfBB['BB_Growth_0'],
-             label='Cambridge BlueBikes Rides', color='blue')
+    # # Plot Bluebikes data
+    # plt.plot(dfBB['Date'], dfBB['BB_Growth_0'],
+    #          label='Cambridge BlueBikes Rides', color='blue')
 
-    # Plot Braodway data
-    plt.plot(dfBway['Date'], dfBway['Broadway_Growth_0'],
-             label='Cambridge BlueBikes Rides', color='darkorange')
+    # # Plot Braodway data
+    # plt.plot(dfBway['Date'], dfBway['Broadway_Growth_0'],
+    #          label='Broadway Cambridge', color='darkorange')
+    
+    # Plot Baseline data
+    plt.plot(dfBaseline.index, dfBaseline['Baseline_Rolling_0'],
+             label='Cambridge Ridership Baseline', color='gray')
 
     # Plot each day's count data
     for loc in dfDate.groupby('Location'):
-        plt.scatter(loc[1]['Datetime'], loc[1]
+        plt.scatter(loc[1]['Date'], loc[1]
                     ['Bike_Growth_0'], label=loc[0], marker='.', s=s)
+        
+    # Add line for project completion
+    ax = project_marker(ax)
 
+    # Annotate
     note1 = 'Since project implementation, bike volumes at'
     note2 = 'each count location in the surrounding neighborhood'
     note3 = f'have increased by as much as {df.Bike_Growth_0.max()/100 + 1:.1f} times'
@@ -469,8 +530,8 @@ def plot_bike_growth(df, dfDate, dfBB, dfBway, dfTotal):
 
     # Plot limits
     dateLims = []
-    dateLims.append(dfTotal['Datetime'].iloc[0] - timedelta(days=5))
-    dateLims.append(dfTotal['Datetime'].iloc[-1] + timedelta(days=5))
+    dateLims.append(dfTotal['Date'].iloc[0] - datetime.timedelta(days=5))
+    dateLims.append(dfTotal['Date'].iloc[-1] + datetime.timedelta(days=5))
     plt.xlim(dateLims)
 
     plt.legend()
@@ -479,43 +540,55 @@ def plot_bike_growth(df, dfDate, dfBB, dfBway, dfTotal):
     plt.ylim([-100, 850])
     plt.suptitle(
         'Bike volume growth relative to first count on streets near Garden Street Safety Improvement Project')
-    plt.title('Garden St. project implemented in Novemeber 2022')
-    ax.text(0.1, 0.01, '@BostonBikeData', transform=ax.transAxes)
+    # plt.title('Garden St. project implemented in Novemeber 2022')
+    ax = watermark(ax)
     plt.show()
-    fig.savefig('bike_growth.png', bbox_inches='tight')
+    fig.savefig(f'{folder}/bike_growth.png', bbox_inches='tight')
 
 
-def plot_bike_growth_experimental(df, dfDate, dfBB, dfBway, dfTotal):
+def plot_bike_growth_experimental(df, dfDate, dfBB, dfBway, dfTotal, dfBaseline):
     # Plot bike growth over time
-    fig = plt.figure(figsize=(15, 9), dpi=600)
+    fig = plt.figure(figsize=figsize, dpi=dpi)
     ax = fig.add_subplot(1, 1, 1)
     ax.yaxis.set_major_formatter(mtick.PercentFormatter())
 
     # Plot mean growth numbers
     plt.plot(df['Datetime'], df['Bike_Growth_0'],
-             color='red', marker='o', markersize=markersize, markerfacecolor='none', markeredgecolor='r',
+             color='red', marker='o', markersize=markersize, 
+             markerfacecolor='none', markeredgecolor='r',
+             linewidth=linewidth,
              label='Month Average')
 
     # Plot median growth numbers
     plt.plot(df['Datetime'], df['Quantile_50'],
-             color='purple', marker='o', markersize=markersize, markerfacecolor='none', markeredgecolor='purple',
+             color='purple', marker='o', markersize=markersize, 
+             markerfacecolor='none', markeredgecolor='purple',
+             linewidth=linewidth,
              label='50th Percentile for Count Series')
     plt.fill_between(df['Datetime'], df['Quantile_25'],
                      df['Quantile_75'], facecolor='purple', alpha=0.5)
 
-    # Plot Bluebikes data
-    plt.plot(dfBB['Date'], dfBB['BB_Growth_0'],
-             label='Cambridge BlueBikes Rides', color='blue')
+    # # Plot Bluebikes data
+    # plt.plot(dfBB['Date'], dfBB['BB_Growth_0'],
+    #          label='Cambridge BlueBikes Rides', color='blue')
 
-    # Plot Braodway data
-    plt.plot(dfBway['Date'], dfBway['Broadway_Growth_0'],
-             label='Cambridge BlueBikes Rides', color='darkorange')
+    # # Plot Braodway data
+    # plt.plot(dfBway['Date'], dfBway['Broadway_Growth_0'],
+    #          label='Cambridge BlueBikes Rides', color='darkorange')
+    
+    # Plot Baseline data
+    plt.plot(dfBaseline.index, dfBaseline['Baseline_Rolling_0'],
+             label='Cambridge Ridership Baseline', color='gray')
 
     # Plot each day's count data
     for loc in dfDate.groupby('Location'):
         plt.scatter(loc[1]['Datetime'], loc[1]
                     ['Bike_Growth_0'], label=loc[0], marker='.', s=s)
 
+    # Add line for project completion
+    ax = project_marker(ax)
+
+    # Annotate
     note1 = 'Since project implementation, bike volumes at each count location'
     note2 = f'have increased on average by as much as {df.Bike_Growth_0.max()/100 + 1:.1f} times'
     ax.text(
@@ -527,8 +600,8 @@ def plot_bike_growth_experimental(df, dfDate, dfBB, dfBway, dfTotal):
 
     # Plot limits
     dateLims = []
-    dateLims.append(dfTotal['Datetime'].iloc[0] - timedelta(days=5))
-    dateLims.append(dfTotal['Datetime'].iloc[-1] + timedelta(days=5))
+    dateLims.append(dfTotal['Datetime'].iloc[0] - datetime.timedelta(days=5))
+    dateLims.append(dfTotal['Datetime'].iloc[-1] + datetime.timedelta(days=5))
     plt.xlim(dateLims)
 
     plt.legend()
@@ -537,30 +610,39 @@ def plot_bike_growth_experimental(df, dfDate, dfBB, dfBway, dfTotal):
     plt.ylim([-100, 850])
     plt.suptitle(
         'Bike volume relative to first count on streets near Garden Street Safety Improvement Project')
-    plt.title('Garden St. project implemented in Novemeber 2022')
-    ax.text(0.1, 0.01, '@BostonBikeData', transform=ax.transAxes)
+    # plt.title('Garden St. project implemented in Novemeber 2022')
+    ax = watermark(ax)
     plt.show()
-    fig.savefig('bike_growth_experimental.png', bbox_inches='tight')
+    fig.savefig(f'{folder}/bike_growth_experimental.png', bbox_inches='tight')
 
 
-def plot_bike_volume(df, dfDate, dfBB, dfBway, dfTotal):
+def plot_bike_volume(df, dfDate, dfBB, dfBway, dfTotal, dfBaseline):
     # Plot bike volume over time
-    fig = plt.figure(figsize=(15, 9), dpi=600)
+    fig = plt.figure(figsize=figsize, dpi=dpi)
     ax = fig.add_subplot(1, 1, 1)
     ax.yaxis.set_major_formatter(mtick.PercentFormatter())
 
     # Plot mean growth numbers
-    plt.plot(dfTotal['Datetime'], dfTotal['Norm'],
-             color='g', marker='o', markersize=markersize, markerfacecolor='none', markeredgecolor='g',
+    plt.plot(dfTotal['Date'], dfTotal['Norm'],
+             color='g', marker='o', markersize=markersize, 
+             markerfacecolor='none', markeredgecolor='g',
+             linewidth=linewidth,
              label='Bike Volume Across all Count Locations')
 
-    # Plot Bluebikes data
-    plt.plot(dfBB['Date'], dfBB['BB_Growth_0'],
-             label='Broadway Bike Counter', color='blue')
+    # # Plot Bluebikes data
+    # plt.plot(dfBB['Date'], dfBB['BB_Growth_0'],
+    #          label='Broadway Bike Counter', color='blue')
 
-    # Plot Braodway data
-    plt.plot(dfBway['Date'], dfBway['Broadway_Growth_0'],
-             label='Cambridge BlueBikes Rides', color='darkorange')
+    # # Plot Braodway data
+    # plt.plot(dfBway['Date'], dfBway['Broadway_Growth_0'],
+    #          label='Cambridge BlueBikes Rides', color='darkorange')
+    
+    # Plot Baseline data
+    plt.plot(dfBaseline.index, dfBaseline['Baseline_Rolling_0'],
+             label='Cambridge Ridership Baseline', color='gray')
+    
+    # Add line for project completion
+    ax = project_marker(ax)
 
     # Notes on max improvements
     note1 = 'Since project implementation, bike volume across'
@@ -575,8 +657,8 @@ def plot_bike_volume(df, dfDate, dfBB, dfBway, dfTotal):
 
     # Plot limits
     dateLims = []
-    dateLims.append(dfTotal['Datetime'].iloc[0] - timedelta(days=5))
-    dateLims.append(dfTotal['Datetime'].iloc[-1] + timedelta(days=5))
+    dateLims.append(dfTotal['Date'].iloc[0] - datetime.timedelta(days=5))
+    dateLims.append(dfTotal['Date'].iloc[-1] + datetime.timedelta(days=5))
     plt.xlim(dateLims)
 
     plt.legend()
@@ -585,37 +667,53 @@ def plot_bike_volume(df, dfDate, dfBB, dfBway, dfTotal):
     plt.ylim([-100, 200])
     plt.suptitle(
         'Cumalative bike volume across all count locations on streets near Garden Street Safety Improvement Project')
-    plt.title('Garden St. project implemented in Novemeber 2022')
-    ax.text(0.1, 0.01, '@BostonBikeData', transform=ax.transAxes)
+    # plt.title('Garden St. project implemented in Novemeber 2022')
+    ax = watermark(ax)
     plt.show()
-    fig.savefig('bike_volume.png', bbox_inches='tight')
+    fig.savefig(f'{folder}/bike_volume.png', bbox_inches='tight')
 
 
-def plot_volume_adjusted(df, dfDate, dfBB, dfBway, dfTotal):
+def plot_volume_adjusted(df, dfDate, dfBB, dfBway, dfTotal, dfBaseline):
     # Plot bike growth over time, relative to Bluebikes
-    fig = plt.figure(figsize=(15, 9), dpi=600)
+    fig = plt.figure(figsize=figsize, dpi=dpi)
     ax = fig.add_subplot(1, 1, 1)
     ax.yaxis.set_major_formatter(mtick.PercentFormatter())
 
     # Plot mean growth numbers
-    plt.plot(df['Datetime'], df['Bike_Growth_0'],
-             color='red', linestyle='--',
-             marker='o', markersize=markersize, markerfacecolor='none', markeredgecolor='red',
+    plt.plot(df['Date'], df['Bike_Growth_0'],
+             color='green', #linestyle='--',
+             marker='o', markersize=markersize, 
+             markerfacecolor='none', markeredgecolor='green',
+             linewidth=linewidth,
              label='Month Average')
-    plt.plot(df['Datetime'], df['Adjusted_Growth_BB_0'],
-             color='blue', marker='o', markersize=markersize, markerfacecolor='none', markeredgecolor='b',
-             label='Month Average adjusted for Bluebikes Ridership')
-    plt.plot(df['Datetime'], df['Adjusted_Growth_Bway_0'],
-             color='darkorange', marker='o', markersize=markersize, markerfacecolor='none', markeredgecolor='darkorange',
-             label='Month Average adjusted for bike volume on Broadway')
+    # plt.plot(df['Date'], df['Adjusted_Growth_BB_0'],
+    #          color='blue', marker='o', markersize=markersize, 
+    #          markerfacecolor='none', markeredgecolor='b',
+    #          label='Month Average adjusted for Bluebikes Ridership')
+    # plt.plot(df['Date'], df['Adjusted_Growth_Bway_0'],
+    #          color='darkorange', marker='o', markersize=markersize, 
+    #          markerfacecolor='none', markeredgecolor='darkorange',
+    #          label='Month Average adjusted for bike volume on Broadway')
+    plt.plot(df['Date'], df['Adjusted_Growth_Baseline_0'],
+             color='red', linestyle='--',
+             marker='o', markersize=markersize, 
+             markerfacecolor='none', markeredgecolor='red',
+             label='Month Average adjusted for bike volume in Cambridge')
 
-    # Plot Bluebikes data
-    plt.plot(dfBB['Date'], dfBB['BB_Growth_0'],
-             label='Cambridge BlueBikes Rides', color='blue', linestyle='--')
+    # # Plot Bluebikes data
+    # plt.plot(dfBB['Date'], dfBB['BB_Growth_0'],
+    #          label='Cambridge BlueBikes Rides', color='blue', linestyle='--')
 
-    # Plot Braodway data
-    plt.plot(dfBway['Date'], dfBway['Broadway_Growth_0'],
-             label='Cambridge BlueBikes Rides', color='darkorange', linestyle='--')
+    # # Plot Braodway data
+    # plt.plot(dfBway['Date'], dfBway['Broadway_Growth_0'],
+    #          label='Broadway, Cambridge', color='darkorange', linestyle='--')
+    
+    # Plot Baseline data
+    plt.plot(dfBaseline.index, dfBaseline['Baseline_Rolling_0'],
+             label='Cambridge Ridership Baseline', color='gray')
+    
+    # Add line for project completion
+    ax = project_marker(ax)
 
     # Notes on max improvements
     noteHeader = 'Since project implementation, bike volume at \neach count location has increased on average by as much as:'
@@ -632,8 +730,8 @@ def plot_volume_adjusted(df, dfDate, dfBB, dfBway, dfTotal):
 
     # Plot limits
     dateLims = []
-    dateLims.append(dfTotal['Datetime'].iloc[0] - timedelta(days=5))
-    dateLims.append(dfTotal['Datetime'].iloc[-1] + timedelta(days=5))
+    dateLims.append(dfTotal['Date'].iloc[0] - datetime.timedelta(days=5))
+    dateLims.append(dfTotal['Date'].iloc[-1] + datetime.timedelta(days=5))
     plt.xlim(dateLims)
 
     plt.legend(loc=2)
@@ -642,17 +740,17 @@ def plot_volume_adjusted(df, dfDate, dfBB, dfBway, dfTotal):
     plt.ylim([-100, 1100])
     plt.suptitle(
         'Adjusted bike volume relative to first count on streets near Garden Street Safety Improvement Project')
-    plt.title('Garden St. project implemented in Novemeber 2022')
-    ax.text(0.1, 0.01, '@BostonBikeData', transform=ax.transAxes)
+    # plt.title('Garden St. project implemented in Novemeber 2022')
+    ax = watermark(ax)
     plt.show()
-    fig.savefig('bike_volume_adjusted.png', bbox_inches='tight')
+    fig.savefig(f'{folder}/bike_volume_adjusted.png', bbox_inches='tight')
 
 
 def plot_bike_growth_map(countLocale, projectPath, dfCount):
 
     imagery = OSM()
 
-    fig = plt.figure(figsize=(15, 9), dpi=600)
+    fig = plt.figure(figsize=figsize, dpi=dpi)
     ax = plt.axes(projection=imagery.crs)
     ax.set_extent((-71.134, -71.1215, 42.378, 42.388))  # Left, Right, Bottom, Top
 
@@ -680,21 +778,21 @@ def plot_bike_growth_map(countLocale, projectPath, dfCount):
     plt.plot(projectPath[:, 1], projectPath[:, 0], transform=ccrs.PlateCarree(),
              alpha=0.6, color='gold', linewidth=10)
     
-    ax.text(0.1, 0.01, '@BostonBikeData', transform=ax.transAxes,
+    ax.text(0.1, 0.01, '@BostonBikeData | BCU Labs', transform=ax.transAxes,
             bbox=dict(boxstyle="round,pad=0.3",
                       fc="white", ec="black", lw=1, alpha=0.7))
 
     plt.legend(loc=1, handler_map={type(sc): HandlerPathCollection(update_func=update_prop)})
     plt.title('Garden St. Improvement Project Area Bike Volume Increase')
     plt.show()
-    fig.savefig('bike_growth_map.png', bbox_inches='tight')
+    fig.savefig(f'{folder}/bike_growth_map.png', bbox_inches='tight')
 
 
 def plot_bike_volume_map(countLocale, projectPath, dfCount):
 
     imagery = OSM()
 
-    fig = plt.figure(figsize=(15, 9), dpi=600)
+    fig = plt.figure(figsize=figsize, dpi=dpi)
     ax = plt.axes(projection=imagery.crs)
     ax.set_extent((-71.134, -71.1215, 42.378, 42.388))  # Left, Right, Bottom, Top
 
@@ -732,14 +830,14 @@ def plot_bike_volume_map(countLocale, projectPath, dfCount):
     plt.plot(projectPath[:, 1], projectPath[:, 0], transform=ccrs.PlateCarree(),
              alpha=0.6, color='gold', linewidth=10, label='Project Extents')
     
-    ax.text(0.1, 0.01, '@BostonBikeData', transform=ax.transAxes,
+    ax.text(0.1, 0.01, '@BostonBikeData | BCU Labs', transform=ax.transAxes,
             bbox=dict(boxstyle="round,pad=0.3",
                       fc="white", ec="black", lw=1, alpha=0.7))
 
     plt.legend(loc=1, handler_map={type(sc): HandlerPathCollection(update_func=update_prop)})
     plt.title('Garden St. Improvement Project Area Bike Volume')
     plt.show()
-    fig.savefig('bike_raw_volume_map.png', bbox_inches='tight')
+    fig.savefig(f'{folder}/bike_raw_volume_map.png', bbox_inches='tight')
 
 
 def update_prop(handle, orig):
@@ -773,26 +871,35 @@ projectArea = [[42.383823, -71.129201],
 projectArea = np.array(projectArea)
 
 # %% Main Script
+def main():
+    # dfGardenCounts = collect_data()
+    dfGardenCounts = pd.read_pickle(f'{folder}/all_garden_data.pkl')
 
-# dfGardenCounts = collect_data()
-dfGardenCounts = pd.read_pickle('all_garden_data.pkl')
+    dfBluebikes = import_bluebikes()
+    dfBroadway = import_broadway()
 
-dfBluebikes = import_bluebikes()
-dfBroadway = import_broadway()
-
-dfGrowthSummary, dfGrowthCounters, dfSummaryMean = data_analysis(
-    dfGardenCounts, dfBluebikes, dfBroadway)
+    dfGrowthSummary, dfGrowthCounters, dfSummaryMean, dfBaseline = data_analysis(
+        dfGardenCounts, dfBluebikes, dfBroadway)
 
 # %% Make the plots!
 
-plot_mode_share(dfGrowthSummary, dfGrowthCounters)
-plot_bike_growth(dfGrowthSummary, dfGrowthCounters, dfBluebikes, dfBroadway, dfSummaryMean)
+    # plot_mode_share(dfGrowthSummary, dfGrowthCounters)
+    plot_bike_growth(dfGrowthSummary, dfGrowthCounters, 
+                     dfBluebikes, dfBroadway, 
+                     dfSummaryMean, dfBaseline)
 
-# plot_bike_growth_experimental(dfGrowthSummary, dfGrowthCounters,
-#                               dfBluebikes, dfBroadway, dfSummaryMean)
+    # plot_bike_growth_experimental(dfGrowthSummary, dfGrowthCounters,
+    #                               dfBluebikes, dfBroadway, dfSummaryMean)
 
-plot_bike_volume(dfGrowthSummary, dfGrowthCounters, dfBluebikes, dfBroadway, dfSummaryMean)
-plot_volume_adjusted(dfGrowthSummary, dfGrowthCounters, dfBluebikes, dfBroadway, dfSummaryMean)
+    plot_bike_volume(dfGrowthSummary, dfGrowthCounters, 
+                     dfBluebikes, dfBroadway, 
+                     dfSummaryMean, dfBaseline)
+    plot_volume_adjusted(dfGrowthSummary, dfGrowthCounters, 
+                         dfBluebikes, dfBroadway, 
+                         dfSummaryMean, dfBaseline)
 
-plot_bike_growth_map(countLocations, projectArea, dfGrowthCounters)
-plot_bike_volume_map(countLocations, projectArea, dfGrowthCounters)
+    # plot_bike_growth_map(countLocations, projectArea, dfGrowthCounters)
+    # plot_bike_volume_map(countLocations, projectArea, dfGrowthCounters)
+
+if __name__ == '__main__':
+    main()
