@@ -383,6 +383,9 @@ def data_analysis(dfData, dfBB, dfBway):
     growthSummary['Adjusted_Growth_Bway_0'] = growthSummary['Adjusted_Growth_Bway_100'] - 100
     growthSummary['Adjusted_Growth_Baseline_0'] = growthSummary['Adjusted_Growth_Baseline_100'] - 100
 
+    # growthSummary['Baseline_Adjusted_100'] = 100 * growthSummary['Bike_Growth_frac'] / growthSummary['Baseline_frac']
+    # growthSummary['Baseline_Adjusted_0'] = dfNormalizedMean['Baseline_Adjusted_100'] - 100
+
     # dfDate['Adjusted_Growth'] = (((dfDate['Bike_Growth'] + 100)/100) / ((growthMean['Bluebikes'] + 100)/100) * 100 ) - 100
 
     # Bike mode share by count group
@@ -434,23 +437,26 @@ def plot_mode_share(df, dfDate):
     ax.yaxis.set_major_formatter(mtick.PercentFormatter())
 
     # Plot mean growth numbers
-    plt.plot(df['Datetime'], df['Bike_Car_Share'],
-             color='purple', marker='o', markersize=markersize,
+    plt.plot(df.index, df['Bike_Car_Share'],
+             marker='o', markersize=markersize,
              markerfacecolor='none', markeredgecolor='purple',
-             linewidth=linewidth,
+             linestyle='None')
+    plt.plot(df.index, df['Bike_Car_Share'].rolling('56D', center=True).mean(),
+             color='purple', linewidth=linewidth,
              label='Month Average')
 
-    for loc in dfDate.groupby('Location'):
-        ax.scatter(loc[1]['Datetime'], loc[1]
-                   ['Bike_Car_Share'], label=loc[0], marker='.', s=s)
+    # # Plot individual count markers
+    # for loc in dfDate.groupby('Location'):
+    #     ax.scatter(loc[1]['Date'], loc[1]
+    #                ['Bike_Car_Share'], label=loc[0], marker='.', s=s)
 
     # Add line for project completion
     ax = project_marker(ax)
 
     # Annotate
     shareMax = df['Bike_Car_Share'].max()
-    shareInit = df[df['Datetime'] ==
-                   df['Datetime'].min()]['Bike_Car_Share'].iloc[0]
+    shareInit = df[df['Date'] ==
+                   df['Date'].min()]['Bike_Car_Share'].iloc[0]
     sharePoint = shareMax - shareInit
     shareIncrease = shareMax / shareInit + 1
     print(f'Bike Mode Share percentage point increase: {sharePoint:0.1f}')
@@ -491,10 +497,12 @@ def plot_bike_growth(df, dfDate, dfBB, dfBway, dfTotal, dfBaseline):
     ax.yaxis.set_major_formatter(mtick.PercentFormatter())
 
     # Plot mean growth numbers
-    plt.plot(df['Date'], df['Bike_Growth_0'],
-             color='red', marker='o', markersize=markersize, 
-             markerfacecolor='none', markeredgecolor='r',
-             linewidth=linewidth,
+    plt.plot(df.index, df['Bike_Growth_0'],
+             marker='o', markersize=markersize,
+             markerfacecolor='none', markeredgecolor='red',
+             linestyle='None')
+    plt.plot(df.index, df['Bike_Growth_0'].rolling('56D', center=True).mean(),
+             color='red', linewidth=linewidth,
              label='Month Average')
 
     # # Plot Bluebikes data
@@ -507,12 +515,12 @@ def plot_bike_growth(df, dfDate, dfBB, dfBway, dfTotal, dfBaseline):
     
     # Plot Baseline data
     plt.plot(dfBaseline.index, dfBaseline['Baseline_Rolling_0'],
-             label='Cambridge Ridership Baseline', color='gray')
+             label='Cambridge Bike Ridership Baseline', color='gray')
 
-    # Plot each day's count data
-    for loc in dfDate.groupby('Location'):
-        plt.scatter(loc[1]['Date'], loc[1]
-                    ['Bike_Growth_0'], label=loc[0], marker='.', s=s)
+    # # Plot each day's count data
+    # for loc in dfDate.groupby('Location'):
+    #     plt.scatter(loc[1]['Date'], loc[1]
+    #                 ['Bike_Growth_0'], label=loc[0], marker='.', s=s)
         
     # Add line for project completion
     ax = project_marker(ax)
@@ -537,7 +545,8 @@ def plot_bike_growth(df, dfDate, dfBB, dfBway, dfTotal, dfBaseline):
     plt.legend()
     plt.xlabel('Count Date')
     plt.ylabel('Bike Growth')
-    plt.ylim([-100, 850])
+    # plt.ylim([-100, 850])
+    plt.ylim([-100, 650])
     plt.suptitle(
         'Bike volume growth relative to first count on streets near Garden Street Safety Improvement Project')
     # plt.title('Garden St. project implemented in Novemeber 2022')
@@ -578,7 +587,7 @@ def plot_bike_growth_experimental(df, dfDate, dfBB, dfBway, dfTotal, dfBaseline)
     
     # Plot Baseline data
     plt.plot(dfBaseline.index, dfBaseline['Baseline_Rolling_0'],
-             label='Cambridge Ridership Baseline', color='gray')
+             label='Cambridge Bike Ridership Baseline', color='gray')
 
     # Plot each day's count data
     for loc in dfDate.groupby('Location'):
@@ -623,10 +632,17 @@ def plot_bike_volume(df, dfDate, dfBB, dfBway, dfTotal, dfBaseline):
     ax.yaxis.set_major_formatter(mtick.PercentFormatter())
 
     # Plot mean growth numbers
+    # plt.plot(dfTotal['Date'], dfTotal['Norm'],
+    #          color='g', marker='o', markersize=markersize, 
+    #          markerfacecolor='none', markeredgecolor='g',
+    #          linewidth=linewidth,
+    #          label='Bike Volume Across all Count Locations')
     plt.plot(dfTotal['Date'], dfTotal['Norm'],
-             color='g', marker='o', markersize=markersize, 
+             marker='o', markersize=markersize,
              markerfacecolor='none', markeredgecolor='g',
-             linewidth=linewidth,
+             linestyle='None')
+    plt.plot(dfTotal['Date'], dfTotal['Norm'].rolling('56D', center=True).mean(),
+             color='g', linewidth=linewidth,
              label='Bike Volume Across all Count Locations')
 
     # # Plot Bluebikes data
@@ -639,7 +655,7 @@ def plot_bike_volume(df, dfDate, dfBB, dfBway, dfTotal, dfBaseline):
     
     # Plot Baseline data
     plt.plot(dfBaseline.index, dfBaseline['Baseline_Rolling_0'],
-             label='Cambridge Ridership Baseline', color='gray')
+             label='Cambridge Bike Ridership Baseline', color='gray')
     
     # Add line for project completion
     ax = project_marker(ax)
@@ -680,24 +696,42 @@ def plot_volume_adjusted(df, dfDate, dfBB, dfBway, dfTotal, dfBaseline):
     ax.yaxis.set_major_formatter(mtick.PercentFormatter())
 
     # Plot mean growth numbers
-    plt.plot(df['Date'], df['Bike_Growth_0'],
-             color='green', #linestyle='--',
-             marker='o', markersize=markersize, 
+    # plt.plot(df['Date'], df['Bike_Growth_0'],
+    #          color='green', #linestyle='--',
+    #          marker='o', markersize=markersize, 
+    #          markerfacecolor='none', markeredgecolor='green',
+    #          linewidth=linewidth,
+    #          label='Month Average')
+    plt.plot(df.index, df['Bike_Growth_0'],
+             marker='o', markersize=markersize,
              markerfacecolor='none', markeredgecolor='green',
-             linewidth=linewidth,
+             linestyle='None')
+    plt.plot(df.index, df['Bike_Growth_0'].rolling('56D', center=True).mean(),
+             color='green', linewidth=linewidth,
              label='Month Average')
+    
+    # Plot Adjusted Values
     # plt.plot(df['Date'], df['Adjusted_Growth_BB_0'],
     #          color='blue', marker='o', markersize=markersize, 
     #          markerfacecolor='none', markeredgecolor='b',
     #          label='Month Average adjusted for Bluebikes Ridership')
+
     # plt.plot(df['Date'], df['Adjusted_Growth_Bway_0'],
     #          color='darkorange', marker='o', markersize=markersize, 
     #          markerfacecolor='none', markeredgecolor='darkorange',
     #          label='Month Average adjusted for bike volume on Broadway')
-    plt.plot(df['Date'], df['Adjusted_Growth_Baseline_0'],
-             color='red', linestyle='--',
-             marker='o', markersize=markersize, 
+
+    # plt.plot(df['Date'], df['Adjusted_Growth_Baseline_0'],
+    #          color='red', linestyle='--',
+    #          marker='o', markersize=markersize, 
+    #          markerfacecolor='none', markeredgecolor='red',
+    #          label='Month Average adjusted for bike volume in Cambridge')
+    plt.plot(df.index, df['Adjusted_Growth_Baseline_0'],
+             marker='o', markersize=markersize,
              markerfacecolor='none', markeredgecolor='red',
+             linestyle='None')
+    plt.plot(df.index, df['Adjusted_Growth_Baseline_0'].rolling('56D', center=True).mean(),
+             color='red', linewidth=linewidth,
              label='Month Average adjusted for bike volume in Cambridge')
 
     # # Plot Bluebikes data
@@ -710,7 +744,7 @@ def plot_volume_adjusted(df, dfDate, dfBB, dfBway, dfTotal, dfBaseline):
     
     # Plot Baseline data
     plt.plot(dfBaseline.index, dfBaseline['Baseline_Rolling_0'],
-             label='Cambridge Ridership Baseline', color='gray')
+             label='Cambridge Bike Ridership Baseline', color='gray')
     
     # Add line for project completion
     ax = project_marker(ax)
@@ -718,11 +752,12 @@ def plot_volume_adjusted(df, dfDate, dfBB, dfBway, dfTotal, dfBaseline):
     # Notes on max improvements
     noteHeader = 'Since project implementation, bike volume at \neach count location has increased on average by as much as:'
     noteTab = '\n       -'
-    noteRaw = f'{noteTab}{df.Bike_Growth_0.max()/100+1:.1f} times'
-    noteBB = f'{noteTab}{df.Adjusted_Growth_BB_0.max()/100+1:.1f} times relative to Bluebikes useage in Cambridge'
-    noteBway = f'{noteTab}{df.Adjusted_Growth_Bway_0.max()/100+1:.1f} times relative to bike volume on Broadway'
+    noteRaw = f'{noteTab}{df.Bike_Growth_0.max()/100+1:.1f} times counts directly before installation'
+    # noteBB = f'{noteTab}{df.Adjusted_Growth_BB_0.max()/100+1:.1f} times relative to Bluebikes useage in Cambridge'
+    # noteBway = f'{noteTab}{df.Adjusted_Growth_Bway_0.max()/100+1:.1f} times relative to bike volume on Broadway'
+    noteBaseline = f'{noteTab}{df.Adjusted_Growth_Baseline_0.max()/100+1:.1f} times relative to Cambridge baseline bike volume'
     ax.text(
-        0.01, 0.8, f'{noteHeader}{noteRaw}{noteBB}{noteBway}',
+        0.01, 0.8, f'{noteHeader}{noteRaw}{noteBaseline}',
         transform=ax.transAxes, ha='left', va='top',
         bbox=dict(boxstyle="round,pad=0.3",
                   fc="lightblue", ec="steelblue", lw=2)
@@ -882,8 +917,13 @@ def main():
         dfGardenCounts, dfBluebikes, dfBroadway)
 
 # %% Make the plots!
+    dfGrowthSummary.set_index('Date', inplace=True, drop=False)
+    dfGrowthSummary.index.rename('DateIdx')
 
-    # plot_mode_share(dfGrowthSummary, dfGrowthCounters)
+    dfSummaryMean.set_index('Date', inplace=True, drop=False)
+    dfSummaryMean.index.rename('DateIdx')
+
+    plot_mode_share(dfGrowthSummary, dfGrowthCounters)
     plot_bike_growth(dfGrowthSummary, dfGrowthCounters, 
                      dfBluebikes, dfBroadway, 
                      dfSummaryMean, dfBaseline)
@@ -898,8 +938,8 @@ def main():
                          dfBluebikes, dfBroadway, 
                          dfSummaryMean, dfBaseline)
 
-    # plot_bike_growth_map(countLocations, projectArea, dfGrowthCounters)
-    # plot_bike_volume_map(countLocations, projectArea, dfGrowthCounters)
+    plot_bike_growth_map(countLocations, projectArea, dfGrowthCounters)
+    plot_bike_volume_map(countLocations, projectArea, dfGrowthCounters)
 
 if __name__ == '__main__':
     main()
