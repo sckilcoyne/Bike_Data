@@ -10,7 +10,7 @@ tweepy==4.14.0
 mastodon.py==1.8.1
 
 # General python
-pandas==2.1.4
+pandas==2.2.0
 numpy==1.26.3
 scipy==1.11.4
 python-dotenv==1.0.0
