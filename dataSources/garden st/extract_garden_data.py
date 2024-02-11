@@ -434,32 +434,38 @@ s = 75
 
 titleFont = 20
 noteFont = 16
+axisFont = 16
 
 def project_marker(ax, yArrow=110, yText=200):
     projectDate = datetime.date(2022,11,17)
-    text = 'Garden Street bike lane\ninstallation complete'
+    text = 'Garden Street\nupgrade complete'
 
-    # ax.axvline(x=projectDate,
-    #            linewidth=4,
-    #            color='gray')
+    ax.axvline(x=projectDate,
+               linewidth=4,
+               linestyle=":",
+               color='black')
     
-    # ax.text(projectDate - datetime.timedelta(days=1), 0.5,
-    #         text,
-    #         # rotation=90,
-    #         horizontalalignment='right',
-    #         verticalalignment='center',
-    #         rotation='vertical',
-    #         transform=ax.get_xaxis_text1_transform(0)[0],
-    #         )
+    ax.text(projectDate - datetime.timedelta(days=1), 0.5,
+            text, fontsize=noteFont,
+            # rotation=90,
+            horizontalalignment='right',
+            verticalalignment='center',
+            # rotation='vertical',
+            transform=ax.get_xaxis_text1_transform(0)[0],
+            )
     
-    ax.annotate(text, 
-                xy=(projectDate, yArrow), 
-                # xytext=(projectDate + datetime.timedelta(days=5), yText),
-                xytext=(projectDate, yText),
-                fontsize=14, ha='center',
-                arrowprops=dict(facecolor='black', shrink=0.05),
-                transform=ax.get_xaxis_text1_transform(0)[0],
-                )
+    # ax.annotate(text, 
+    #             xy=(projectDate, yArrow), 
+    #             # xytext=(projectDate + datetime.timedelta(days=5), yText),
+    #             xytext=(projectDate, yText),
+    #             fontsize=noteFont, ha='center',
+    #             arrowprops=dict(facecolor='black', shrink=0.05),
+                # arrowprops=dict(facecolor=color, edgecolor=color, 
+                #                             arrowstyle="-",
+                #                             connectionstyle="arc3,rad=0.45",
+                #                             ),
+    #             transform=ax.get_xaxis_text1_transform(0)[0],
+    #             )
 
     return ax
 
@@ -470,6 +476,7 @@ def watermark(ax):
 
 def date_axis(ax):
     ax.xaxis.set_major_formatter(mdates.DateFormatter('%b-%Y'))
+    ax.tick_params(axis='both', which='major', labelsize=14)
     return ax
 
 def baseline_data(ax, dfBaseline):
@@ -485,9 +492,13 @@ def baseline_data(ax, dfBaseline):
     text = 'Baseline bike ridership\n28 day average of Cambridge BlueBike\nand Broadway EcoTotem counts'
     ax.annotate(text, 
                 xy=(arrowX, arrowY), 
-                xytext=(arrowX + datetime.timedelta(days=8), arrowY + 25),
+                xytext=(arrowX + datetime.timedelta(days=8), arrowY + 60),
                 fontsize=14, color=color,
-                arrowprops=dict(facecolor=color, edgecolor=color, shrink=0.05),
+                verticalalignment='center',
+                arrowprops=dict(facecolor=color, edgecolor=color, 
+                                arrowstyle="-",
+                                connectionstyle="arc3,rad=0.45",
+                                ),
                 transform=ax.get_xaxis_text1_transform(0)[0],
                 )
 
@@ -544,8 +555,8 @@ def plot_mode_share(dfGrowthSummary, dfGardenLoc):
     # axTwin.set_ylim(-100,100)
 
     # plt.legend()
-    # plt.xlabel('Count Date')
-    plt.ylabel('Bike Mode Share')
+    # plt.xlabel('Count Date', fontsize=axisFont)
+    plt.ylabel('Bike Mode Share', fontsize=axisFont)
     # plt.suptitle(
     #     'Bike/Car Mode Share on streets near Garden Street Safety Improvement Project')
     ax.set_title('Bike/Car Mode Share on streets near Garden Street Safety Improvement Project',
@@ -612,8 +623,8 @@ def plot_bike_growth(dfGrowthSummary, dfGardenLoc, dfBB, dfBway, dfBaseline):
     plt.xlim(dateLims)
 
     # plt.legend()
-    # plt.xlabel('Count Date')
-    plt.ylabel('Average count location change in bike volume')
+    # plt.xlabel('Count Date', fontsize=axisFont)
+    plt.ylabel('Average count location change in bike volume', fontsize=axisFont)
     # plt.ylim([-100, 850])
     plt.ylim([0, 750])
     # plt.suptitle(
@@ -682,9 +693,9 @@ def plot_bike_volume(dfGrowthSummary, dfDate, dfBB, dfBway, dfBaseline):
     plt.xlim(dateLims)
 
     # plt.legend()
-    # plt.xlabel('Count Date')
-    plt.ylabel('Total bike volume across all count locations')
-    plt.ylim([0, 300])
+    # plt.xlabel('Count Date', fontsize=axisFont)
+    plt.ylabel('Total bike volume across all count locations', fontsize=axisFont)
+    plt.ylim([0, 250])
     # plt.suptitle(
     ax.set_title(
         'Bike volume on streets near Garden Street Safety Improvement Project',
@@ -711,14 +722,18 @@ def plot_volume_adjusted(dfGrowthSummary, dfDate, dfBB, dfBway, dfBaseline):
     plt.plot(dfGrowthSummary.index, dfGrowthSummary['Volume_Norm_100'].rolling('56D', center=True).mean(),
              color=measColor, linewidth=linewidth,
              label='Month Average')
-    measuredDate = datetime.date(2023,2,15)
-    measuredY = 200
+    measuredDate = datetime.date(2023,2,1)
+    measuredY = 165
     ax.annotate('Bike volume measured', 
                 xy=(measuredDate, measuredY), 
                 xytext=(measuredDate - datetime.timedelta(days=5), measuredY+50),
                 horizontalalignment='center',
                 fontsize=14, color=measColor,
-                arrowprops=dict(facecolor=measColor, edgecolor=measColor, shrink=0.05),
+                # arrowprops=dict(facecolor=measColor, edgecolor=measColor, shrink=0.05),
+                arrowprops=dict(facecolor=measColor, edgecolor=measColor, 
+                                arrowstyle="-",
+                                connectionstyle="arc3,rad=0.3",
+                                ),
                 transform=ax.get_xaxis_text1_transform(0)[0],
                 )
     
@@ -746,14 +761,18 @@ def plot_volume_adjusted(dfGrowthSummary, dfDate, dfBB, dfBway, dfBaseline):
     plt.plot(dfGrowthSummary.index, dfGrowthSummary['Adjusted_Volume_Baseline_100'].rolling('56D', center=True).mean(),
              color=adjustedColor, linewidth=linewidth,
              label='Month Average adjusted for bike volume in Cambridge')
-    adjustedDate = datetime.date(2023,1,6)
-    adjustedY = 280
-    ax.annotate('Adjusted bike volume (measured/baseline)', 
+    adjustedDate = datetime.date(2022,12,30)
+    adjustedY = 230
+    ax.annotate('Adjusted bike volume\n(measured/baseline)', 
                 xy=(adjustedDate, adjustedY), 
-                xytext=(adjustedDate - datetime.timedelta(days=10), adjustedY),
+                xytext=(adjustedDate - datetime.timedelta(days=5), adjustedY+40),
                 horizontalalignment='right', verticalalignment='center',
                 fontsize=14, color=adjustedColor,
-                arrowprops=dict(facecolor=adjustedColor, edgecolor=adjustedColor, shrink=0.05),
+                # arrowprops=dict(facecolor=adjustedColor, edgecolor=adjustedColor, shrink=0.05),
+                arrowprops=dict(facecolor=adjustedColor, edgecolor=adjustedColor, 
+                                arrowstyle="-",
+                                connectionstyle="arc3,rad=0.3",
+                                ),
                 transform=ax.get_xaxis_text1_transform(0)[0],
                 )
 
@@ -796,8 +815,8 @@ def plot_volume_adjusted(dfGrowthSummary, dfDate, dfBB, dfBway, dfBaseline):
     plt.xlim(dateLims)
 
     # plt.legend(loc=2)
-    # plt.xlabel('Count Date')
-    plt.ylabel('Total bike volume across all count locations')
+    # plt.xlabel('Count Date', fontsize=axisFont)
+    plt.ylabel('Total bike volume across all count locations', fontsize=axisFont)
     plt.ylim([0, 400])
     # plt.suptitle(
     ax.set_title(
@@ -837,6 +856,14 @@ def plot_bike_growth_map(countLocale, projectPath, dfGardenLoc):
     sc = plt.scatter(long, lat, transform=ccrs.PlateCarree(),
                      marker='o', color='red', s=growth, alpha=0.5,
                      linestyle='', label='Growth relative to initial count')
+    for i, v in enumerate(growth):
+        if v < 700:
+            latText = lat[i] + 0.00001 * np.sqrt(v) + 0.0001
+        else:
+            latText = lat[i]
+        ax.text(long[i], latText, f'{v:0.0f}%', 
+                ha="center", va="center",
+                transform=ccrs.PlateCarree(),)
 
     plt.plot(projectPath[:, 1], projectPath[:, 0], transform=ccrs.PlateCarree(),
              alpha=0.6, color='gold', linewidth=10)
@@ -846,7 +873,7 @@ def plot_bike_growth_map(countLocale, projectPath, dfGardenLoc):
                       fc="white", ec="black", lw=1, alpha=0.7))
 
     plt.legend(loc=1, handler_map={type(sc): HandlerPathCollection(update_func=update_prop)})
-    plt.title('Garden St. Improvement Project Area Bike Volume Increase')
+    plt.title('Bike Volume Percent Change in\nGarden St. Improvement Project Area', fontsize=titleFont)
     plt.show()
     fig.savefig(f'{folder}/bike_growth_map.png', bbox_inches='tight')
 
@@ -898,7 +925,7 @@ def plot_bike_volume_map(countLocale, projectPath, dfGardenLoc):
                       fc="white", ec="black", lw=1, alpha=0.7))
 
     plt.legend(loc=1, handler_map={type(sc): HandlerPathCollection(update_func=update_prop)})
-    plt.title('Garden St. Improvement Project Area Bike Volume')
+    plt.title('Bike Volumes in\nGarden St. Improvement Project Area', fontsize=titleFont)
     plt.show()
     fig.savefig(f'{folder}/bike_raw_volume_map.png', bbox_inches='tight')
 
@@ -945,17 +972,17 @@ def main():
         dfGarden, dfBB, dfBway)
 
 # %% Make the plots!
-    plot_mode_share(dfGrowthSummary, dfGardenLoc)
-    plot_bike_growth(dfGrowthSummary, dfGardenLoc, 
-                     dfBB, dfBway, 
-                     dfBaseline)
+    # plot_mode_share(dfGrowthSummary, dfGardenLoc)
+    # plot_bike_growth(dfGrowthSummary, dfGardenLoc, 
+    #                  dfBB, dfBway, 
+    #                  dfBaseline)
 
-    plot_bike_volume(dfGrowthSummary, dfGardenLoc, 
-                     dfBB, dfBway, 
-                     dfBaseline)
-    plot_volume_adjusted(dfGrowthSummary, dfGardenLoc, 
-                         dfBB, dfBway, 
-                         dfBaseline)
+    # plot_bike_volume(dfGrowthSummary, dfGardenLoc, 
+    #                  dfBB, dfBway, 
+    #                  dfBaseline)
+    # plot_volume_adjusted(dfGrowthSummary, dfGardenLoc, 
+    #                      dfBB, dfBway, 
+    #                      dfBaseline)
 
     plot_bike_growth_map(countLocations, projectArea, dfGardenLoc)
     plot_bike_volume_map(countLocations, projectArea, dfGardenLoc)
