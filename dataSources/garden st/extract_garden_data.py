@@ -650,7 +650,7 @@ def plot_bike_volume(dfGrowthSummary, dfDate, dfBB, dfBway, dfBaseline):
     #          markerfacecolor='none', markeredgecolor='g',
     #          linewidth=linewidth,
     #          label='Bike Volume Across all Count Locations')
-    color='g'
+    color='green'
     plt.plot(dfGrowthSummary['Date'], dfGrowthSummary['Volume_Norm_100'],
              marker='o', markersize=markersize,
              markerfacecolor=color, markeredgecolor=color,
@@ -658,6 +658,19 @@ def plot_bike_volume(dfGrowthSummary, dfDate, dfBB, dfBway, dfBaseline):
     plt.plot(dfGrowthSummary['Date'], dfGrowthSummary['Volume_Norm_100'].rolling('56D', center=True).mean(),
              color=color, linewidth=linewidth,
              label='Bike Volume Across all Count Locations')
+    measuredDate = datetime.date(2023,2,1)
+    measuredY = 165
+    ax.annotate('Garden Street area\nmeasured bike volume', 
+                xy=(measuredDate, measuredY), 
+                xytext=(measuredDate - datetime.timedelta(days=5), measuredY+50),
+                horizontalalignment='center',
+                fontsize=14, color=color,
+                arrowprops=dict(facecolor=color, edgecolor=color, 
+                                arrowstyle="-",
+                                connectionstyle="arc3,rad=0.3",
+                                ),
+                transform=ax.get_xaxis_text1_transform(0)[0],
+                )
 
     # # Plot Bluebikes data
     # plt.plot(dfBB['Date'], dfBB['BB_Growth_0'],
@@ -985,14 +998,14 @@ def main():
     #                  dfBB, dfBway, 
     #                  dfBaseline)
 
-    # plot_bike_volume(dfGrowthSummary, dfGardenLoc, 
-    #                  dfBB, dfBway, 
-    #                  dfBaseline)
-    # plot_volume_adjusted(dfGrowthSummary, dfGardenLoc, 
-    #                      dfBB, dfBway, 
-    #                      dfBaseline)
+    plot_bike_volume(dfGrowthSummary, dfGardenLoc, 
+                     dfBB, dfBway, 
+                     dfBaseline)
+    plot_volume_adjusted(dfGrowthSummary, dfGardenLoc, 
+                         dfBB, dfBway, 
+                         dfBaseline)
 
-    plot_bike_growth_map(countLocations, projectArea, dfGardenLoc)
+    # plot_bike_growth_map(countLocations, projectArea, dfGardenLoc)
     # plot_bike_volume_map(countLocations, projectArea, dfGardenLoc)
 
 if __name__ == '__main__':
