@@ -16,7 +16,7 @@ scipy==1.12.0
 python-dotenv==1.0.1
 
 # Plotting
-matplotlib==3.8.2
+matplotlib==3.8.3
 plotly==5.19.0
 Cartopy==0.22.0
 
