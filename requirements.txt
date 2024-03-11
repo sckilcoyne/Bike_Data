@@ -27,7 +27,7 @@ sodapy==2.2.0
 tabula-py==2.9.0 
 
 # Cloud Storage
-google-cloud-storage==2.14.0
+google-cloud-storage==2.15.0
 # pydrive2==1.14.0
 
 # Dashboard
